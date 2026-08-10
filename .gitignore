@@ -1,0 +1,34 @@
+# Claude Code — machine-local permission allowlist
+.claude/settings.local.json
+
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+local.properties
+
+# Android build output
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+captures/
+release/
+.externalNativeBuild/
+.cxx/
+
+# Signing — never commit keystores or credentials
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+
+# IDE
+*.iml
+.idea/
+.kotlin/
+
+# OS
+.DS_Store
+Thumbs.db

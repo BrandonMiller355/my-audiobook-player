@@ -1,0 +1,71 @@
+schema: spec-driven
+
+context: |
+  ## Product
+  A simple, fast, local-only Android audiobook player for the owner's personal use.
+  Full requirements live in `simple_android_audiobook_player.prd` at the repo root — it is
+  the source of truth. Read it before proposing anything; do not restate it here.
+
+  ## Tech stack
+  - Kotlin, single-module Gradle project (`:app`), Kotlin DSL build scripts + version catalog
+  - Jetpack Compose (Material 3) for all UI; no XML layouts, no Fragments
+  - AndroidX Media3: ExoPlayer for playback, MediaSession + MediaSessionService for
+    background playback and system/Bluetooth/lock-screen controls
+  - Room for persistence (audiobooks, chapters, playback progress); DataStore only for
+    the single "last used global speed" preference if a table feels heavy
+  - Storage Access Framework (ACTION_OPEN_DOCUMENT_TREE / ACTION_OPEN_DOCUMENT) with
+    persistable URI permissions — never broad filesystem permissions, never copy media
+  - Navigation Compose for the two screens (Library, Player)
+  - Coil for cover-art loading, downsampling, and thumbnail caching
+  - minSdk 26 (Android 8.0); compileSdk/targetSdk = current stable SDK installed locally
+  - Tests: JUnit + kotlinx-coroutines-test for pure logic (natural sort, chapter parsing,
+    progress math); Robolectric or instrumented tests only where a real framework
+    dependency makes unit testing impossible
+
+  ## Architecture conventions
+  - Deliberately plain and small. Layers: UI (Compose + ViewModel) → playback service →
+    library/media scanner → metadata/chapter parser → persistence (Room).
+  - NO dependency-injection framework, NO repository interfaces with a single
+    implementation, NO use-case/interactor layer, NO clean-architecture ceremony.
+    Construct dependencies manually. The PRD explicitly forbids this kind of abstraction.
+  - Keep all playback logic centralized around Media3. Do not build a parallel playback
+    abstraction over ExoPlayer.
+  - Folder books are an ordered Media3 playlist (one MediaItem per file). `.m4b` books are
+    ONE MediaItem plus an internal chapter timeline; chapter navigation is seeking within
+    that item. Never split or rewrite source files.
+  - `.m4b` chapter extraction is the one place custom parsing is allowed: Media3 does not
+    expose MP4 chapter atoms, so a small isolated parser reads the Nero `chpl` atom and the
+    QuickTime chapter text track. Keep it behind one component with fixture-based unit
+    tests. No FFmpeg, no shelling out, no preprocessing, no writing to source files.
+  - Playback speed uses Media3 `PlaybackParameters` with pitch pinned to 1.0 (Sonic
+    time-stretch). Never change speed by altering the sample rate.
+  - Parsed metadata, chapters, and artwork are cached locally; do not rescan every launch.
+  - Avoid giant files, but do not create one-class-per-concept sprawl either.
+
+  ## Hard constraints
+  - Android only. No iOS, no web/PWA, no cross-platform framework, no portability layers.
+  - Entirely local and offline. No backend, accounts, cloud, sync, streaming, analytics,
+    telemetry, ads, or monetization. Do not add the INTERNET permission — if a dependency
+    demands it, stop and raise it rather than adding it quietly.
+  - Removing a book from the library must never delete or modify the user's source files.
+  - Keep dependencies minimal; justify any new one in the proposal.
+  - The PRD's non-goals list (sleep timer, bookmarks, EQ, Chromecast, Android Auto, etc.)
+    is firm. If a change would touch a non-goal, ask before proposing it.
+  - Must handle multi-gigabyte books and books with hundreds of chapter files.
+
+  ## Working conventions
+  - Branches use a plain feature slug — no `claude/` prefix.
+  - Commits go through the `tscommit` shell function (Bash), not plain `git commit`, and
+    carry no Claude/Anthropic attribution or co-author trailer.
+  - No source files whose only consumer is the test suite — keep fakes inline in tests.
+
+rules:
+  proposal:
+    - Cite the specific PRD section(s) the change implements; flag anything not covered by the PRD as out of scope rather than designing it in.
+    - Include a "Non-goals" section stating what this change deliberately does not do.
+    - Justify every new third-party dependency, or state explicitly that none is added.
+    - Call out any new Android permission, foreground-service type, or manifest change.
+  tasks:
+    - Order tasks so the app stays runnable and manually testable after each one.
+    - Include an explicit manual verification task naming the on-device checks from PRD section 25 that apply.
+    - Note any task that needs a real audiobook file (folder book or chaptered .m4b) as a fixture the owner must supply.

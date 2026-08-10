@@ -1,0 +1,960 @@
+# PRD: Simple Android Audiobook Player
+
+## 1. Product Summary
+
+Build a simple, fast, local-only Android audiobook player for personal use.
+
+The app should feel lightweight and practical, with the core playback behavior of apps like Smart AudioBook Player, but without unnecessary complexity, subscriptions, accounts, cloud sync, analytics, ads, or paid feature gates.
+
+The primary use case is listening to locally stored audiobook files on an Android phone.
+
+The app must support both:
+
+1. Audiobooks stored as folders containing multiple audio files, where each file is treated as a chapter/track.
+2. Single `.m4b` audiobook files containing embedded chapter metadata.
+
+The app must remember playback position and playback speed between sessions.
+
+---
+
+## 2. Goals
+
+The app should:
+
+- Play locally stored audiobooks reliably.
+- Make seeking backward/forward extremely easy.
+- Support audiobook-specific chapter navigation.
+- Support playback speed adjustment without raising voice pitch.
+- Support embedded chapters in `.m4b` files.
+- Display cover art when available.
+- Maintain a simple local audiobook library.
+- Continue playing in the background.
+- Integrate with Android media controls, Bluetooth controls, and lock-screen controls.
+- Remember listening progress.
+- Be simple enough to maintain and modify through Claude Code.
+
+---
+
+## 3. Non-Goals
+
+Do NOT build any of the following unless explicitly requested later:
+
+- User accounts
+- Cloud sync
+- Cloud storage
+- Audiobook downloads
+- Audible integration
+- Plex integration
+- DRM support
+- Streaming
+- Online metadata lookup
+- Recommendations
+- Reviews
+- Social features
+- Analytics
+- Ads
+- Purchases
+- Subscriptions
+- Paywalls
+- Chromecast
+- Android Auto
+- Sleep timer
+- Bookmarks
+- Notes
+- EQ
+- Audio normalization
+- Cross-device sync
+- Web/PWA version
+- iOS version
+
+Keep the project intentionally small.
+
+---
+
+## 4. Target Platform
+
+- Android only
+- Native Android application
+- Kotlin
+- Jetpack Compose
+- Minimum supported Android version: choose a reasonable modern minimum, preferably Android 8.0 / API 26 or newer unless a dependency requires otherwise.
+- Target the current stable Android SDK available in the development environment.
+
+---
+
+## 5. Recommended Architecture
+
+Use:
+
+- Kotlin
+- Jetpack Compose
+- Android Media3
+- ExoPlayer
+- MediaSession
+- MediaSessionService for background playback
+- Room OR DataStore for lightweight local persistence
+- Android Storage Access Framework for folder/file selection
+
+Prefer simple, conventional Android architecture.
+
+Suggested layers:
+
+- UI
+- Playback service
+- Library/media scanner
+- Metadata/chapter parser
+- Persistence
+
+Avoid unnecessary abstractions, dependency injection frameworks, repositories, use-case layers, or elaborate clean-architecture patterns unless they clearly reduce complexity.
+
+---
+
+## 6. Core User Flow
+
+### First launch
+
+1. User opens the app.
+2. App shows an empty library.
+3. User taps `Add Audiobook` or `Add Folder`.
+4. User selects either:
+   - a folder containing audiobook files, or
+   - a single `.m4b` file.
+5. App adds the audiobook to the library.
+6. App displays cover art and title if metadata is available.
+7. User taps the audiobook.
+8. Playback screen opens.
+9. User presses Play.
+
+### Returning to app
+
+1. User opens app.
+2. Existing library appears.
+3. Each audiobook shows saved progress.
+4. Tapping a book resumes from its most recently saved position.
+
+---
+
+# 7. Functional Requirements
+
+## 7.1 Library
+
+The library screen must display all added audiobooks.
+
+Each audiobook should show:
+
+- Cover art
+- Book title
+- Optional author if metadata is easily available
+- Playback progress percentage
+- Optional current chapter name
+- Last played state if useful
+
+Library behavior:
+
+- Tap book to open playback screen.
+- Allow adding a book/folder.
+- Allow removing a book from the library.
+- Removing a book from the library must NOT delete the user's source audio files.
+- Preserve permission to selected files/folders using Android persistable URI permissions.
+- Library must survive app restart and phone reboot.
+
+### Accepted book types
+
+A book may be:
+
+#### Folder audiobook
+
+A directory containing multiple compatible audio files.
+
+Examples:
+
+- `.mp3`
+- `.m4a`
+- `.aac`
+- `.ogg`
+- `.opus`
+- `.flac`
+- `.wav`
+
+Only include formats supported by Android Media3/ExoPlayer.
+
+Files should be sorted in a sensible natural order.
+
+Example:
+
+- `1.mp3`
+- `2.mp3`
+- `10.mp3`
+
+must play as:
+
+1, 2, 10
+
+and not:
+
+1, 10, 2
+
+Use filename order unless embedded track/disc metadata provides a clearly better ordering.
+
+#### Single-file audiobook
+
+A single `.m4b` file.
+
+The application must detect and use embedded chapter metadata if present.
+
+---
+
+## 7.2 Playback Screen
+
+The playback screen should prioritize large, simple controls.
+
+Required information:
+
+- Cover art
+- Book title
+- Current chapter title
+- Current chapter number / total chapters if available
+- Current playback position
+- Total book/chapter duration as appropriate
+- Playback progress slider
+- Playback speed
+
+Required controls:
+
+- Play / Pause
+- Seek backward 10 seconds
+- Seek forward 10 seconds
+- Seek backward 1 minute
+- Seek forward 1 minute
+- Previous chapter
+- Next chapter
+- Playback speed control
+
+Suggested visual layout:
+
+    [ Cover Art ]
+
+    Book Title
+    Chapter Name
+
+    ---- progress slider ----
+    elapsed              remaining
+
+    -1m   -10s   Play/Pause   +10s   +1m
+
+        Previous Chapter
+        Next Chapter
+
+        Speed: 1.25x
+
+The exact appearance may differ, but the screen should remain simple.
+
+---
+
+## 7.3 Seeking
+
+The following seek controls are required:
+
+- Backward 10 seconds
+- Forward 10 seconds
+- Backward 60 seconds
+- Forward 60 seconds
+
+Seeking behavior must clamp cleanly to valid positions.
+
+Examples:
+
+- Seeking backward beyond the beginning should go to 0.
+- Seeking forward beyond the end of a chapter should either:
+  - naturally advance into the next chapter if playback timeline supports it, or
+  - clamp to chapter end.
+
+Prefer behavior that feels natural and consistent.
+
+---
+
+## 7.4 Chapter Navigation
+
+### Folder-based books
+
+Treat each audio file as one chapter/track.
+
+- Previous Chapter -> previous audio file
+- Next Chapter -> next audio file
+
+At the start of the first chapter, Previous Chapter should do nothing or restart the first chapter.
+
+At the final chapter, Next Chapter should stop at the end or do nothing.
+
+### `.m4b` books
+
+Read embedded chapter markers.
+
+Each chapter should contain, if available:
+
+- Title
+- Start time
+- End time or duration
+
+Previous Chapter behavior:
+
+- If playback position is more than approximately 3 seconds into the current chapter, restart the current chapter.
+- If playback position is near the beginning of the current chapter, go to the previous chapter.
+
+Next Chapter behavior:
+
+- Seek to the start of the next embedded chapter.
+
+This behavior is preferred because it matches common audiobook-player conventions.
+
+If the `.m4b` contains no embedded chapters:
+
+- Treat the entire file as one chapter.
+
+---
+
+# 8. M4B Embedded Chapter Support
+
+This is a required feature.
+
+The app must extract chapter information from `.m4b` files.
+
+Possible implementation strategies include:
+
+- Android Media3 metadata support if sufficient.
+- MediaExtractor if chapter metadata is accessible.
+- MP4 atom parsing.
+- A lightweight maintained metadata library.
+- Another reliable local-only approach.
+
+Important:
+
+- Do not shell out to FFmpeg.
+- Do not require a server.
+- Do not require preprocessing by the user.
+- Do not modify the original audiobook file.
+
+Support common `.m4b` chapter metadata formats used by audiobook encoders.
+
+At minimum, test with standard M4B files containing chapters represented through MP4 chapter metadata.
+
+If Android Media3 does not expose chapters directly, implement the smallest reasonable parser necessary.
+
+Chapter extraction should happen when the book is added and should be cached locally.
+
+---
+
+# 9. Playback Speed
+
+Playback speed must be adjustable.
+
+Required speeds:
+
+- 0.75x
+- 0.9x
+- 1.0x
+- 1.1x
+- 1.2x
+- 1.25x
+- 1.3x
+- 1.4x
+- 1.5x
+- 1.75x
+- 2.0x
+- 2.25x
+- 2.5x
+- 3.0x
+
+A slider or button/menu is acceptable.
+
+Important requirement:
+
+Playback speed must preserve normal voice pitch as much as Android Media3 supports.
+
+Do NOT implement speed change by simply altering sample playback rate in a way that produces a chipmunk effect.
+
+Use Media3/ExoPlayer playback parameters or appropriate time-stretch audio processing.
+
+The user's selected speed should be remembered.
+
+Preferred behavior:
+
+- Save speed per audiobook.
+- If no saved speed exists for a book, use the most recently used global speed.
+- Default to 1.0x.
+
+---
+
+# 10. Cover Art
+
+Display cover art when available.
+
+Cover art sources, in priority order:
+
+1. Embedded artwork in the audiobook/audio file.
+2. Image found in the audiobook folder, preferably:
+   - `cover.jpg`
+   - `cover.jpeg`
+   - `cover.png`
+   - `folder.jpg`
+   - `folder.png`
+3. Generic audiobook placeholder.
+
+For `.m4b`, embedded cover art should be supported.
+
+Cache thumbnails if useful for performance.
+
+Do not duplicate or modify the source image.
+
+---
+
+# 11. Metadata
+
+When possible, read:
+
+- Title
+- Author / artist
+- Album/book title
+- Track title
+- Track number
+- Disc number
+- Cover art
+- Duration
+
+Metadata is optional except where required for `.m4b` chapters.
+
+Fallback behavior:
+
+- Book title -> folder name or filename without extension
+- Chapter title -> filename without extension
+- Author -> blank
+
+Never block playback because metadata is incomplete.
+
+---
+
+# 12. Progress Persistence
+
+The app must automatically save playback progress.
+
+Persist:
+
+- Audiobook ID
+- Current chapter/file
+- Current playback position
+- Total progress
+- Playback speed
+- Last played timestamp
+
+Save often enough that progress is not meaningfully lost if the app is closed.
+
+Examples:
+
+- periodically while playing
+- on pause
+- on chapter change
+- on service shutdown
+- when playback state changes
+
+When the book is opened again, resume at the saved position.
+
+---
+
+# 13. Background Playback
+
+Audio must continue when:
+
+- Screen turns off
+- App goes to background
+- User switches apps
+- App activity is destroyed while playback service remains alive
+
+Implement using Android Media3 `MediaSessionService`.
+
+Provide a foreground media notification as required by Android.
+
+---
+
+# 14. Android System Media Controls
+
+Support Android system playback controls.
+
+At minimum:
+
+- Play
+- Pause
+- Previous
+- Next
+- Seek position where Android exposes it
+
+The player should work with:
+
+- Lock-screen media controls
+- Notification media controls
+- Bluetooth headset/car play-pause controls
+- Bluetooth previous/next controls
+
+Map previous/next media actions to chapter navigation.
+
+---
+
+# 15. Audio Focus
+
+Follow normal Android audio-focus behavior.
+
+Examples:
+
+- Pause or duck appropriately for phone calls and other important audio.
+- Resume appropriately where Android conventions allow.
+- Do not play over a phone call.
+- Respond correctly when another media application takes audio focus.
+
+Use standard Media3 / Android audio focus integration.
+
+---
+
+# 16. File Access
+
+Use Android's Storage Access Framework.
+
+The user must be able to select:
+
+- A folder containing audiobook files.
+- A single `.m4b` file.
+
+Persist URI access when possible so the user does not need to reselect the book after reboot.
+
+Do not request broad filesystem permissions when the Storage Access Framework is sufficient.
+
+Do not copy entire audiobook files into app-private storage.
+
+Store references/URIs to the user's files.
+
+---
+
+# 17. Natural Sorting
+
+Folder-based audiobook files must use natural sorting.
+
+Examples:
+
+Correct:
+
+- Chapter 1
+- Chapter 2
+- Chapter 3
+- Chapter 10
+
+Incorrect:
+
+- Chapter 1
+- Chapter 10
+- Chapter 2
+- Chapter 3
+
+Prefer embedded track/disc metadata when it is complete and reliable.
+
+Otherwise use natural filename sort.
+
+---
+
+# 18. Playback Queue / Timeline
+
+Represent a folder-based audiobook as an ordered Media3 playlist.
+
+Represent a single `.m4b` file as:
+
+- one media item for actual playback,
+- plus an internal chapter timeline based on embedded chapter timestamps.
+
+Do not split or rewrite `.m4b` files.
+
+For `.m4b` chapter navigation, seek within the same MediaItem.
+
+---
+
+# 19. Data Model
+
+Suggested model:
+
+## Audiobook
+
+- id
+- sourceUri
+- sourceType (`FOLDER` or `M4B`)
+- title
+- author
+- artworkUri/cacheKey
+- totalDurationMs
+- lastPlayedAt
+- playbackSpeed
+
+## Chapter
+
+- id
+- audiobookId
+- title
+- index
+- mediaUri
+- startPositionMs
+- endPositionMs
+- durationMs
+
+For folder books:
+
+- each chapter may have its own `mediaUri`
+- `startPositionMs` can be 0
+
+For `.m4b` books:
+
+- chapters share the same `mediaUri`
+- `startPositionMs` and `endPositionMs` define embedded chapter boundaries
+
+## PlaybackProgress
+
+- audiobookId
+- chapterIndex
+- positionInChapterMs
+- absolutePositionMs if useful
+- updatedAt
+
+This schema is only a suggestion. Simpler equivalent storage is acceptable.
+
+---
+
+# 20. UI Screens
+
+Only three primary screens are required.
+
+## 20.1 Library Screen
+
+Contains:
+
+- App title
+- Audiobook cards/list
+- Add audiobook button
+
+Book entry shows:
+
+- Cover
+- Title
+- Progress
+- Optional author
+
+Actions:
+
+- Open
+- Remove from library
+
+## 20.2 Player Screen
+
+Contains:
+
+- Cover art
+- Title
+- Chapter title
+- Progress slider
+- Time indicators
+- Playback controls
+- Chapter controls
+- Speed control
+- Back button
+
+## 20.3 Add Audiobook Flow
+
+Allow:
+
+- Select folder
+- Select `.m4b` file
+
+This can be a small dialog or buttons that launch Android's system picker.
+
+No settings screen is required initially.
+
+---
+
+# 21. Design Requirements
+
+Keep the design clean and boring.
+
+Priorities:
+
+1. Readability
+2. Large tap targets
+3. Fast access to seek controls
+4. Minimal navigation
+5. Dark mode support
+6. System theme support
+
+Do not spend significant effort on animations.
+
+Do not use excessive cards, gradients, shadows, or decorative UI.
+
+The playback buttons should be easy to hit while walking or running.
+
+---
+
+# 22. Error Handling
+
+Handle these cases gracefully:
+
+- File removed after being added
+- Folder renamed or access revoked
+- Unsupported media file
+- Corrupt media file
+- Missing cover art
+- Missing metadata
+- `.m4b` with no chapters
+- `.m4b` with unusual chapter metadata
+- Empty audiobook folder
+- Book containing some unsupported files
+- Playback service restarted
+- URI permission lost
+
+Never crash because metadata is malformed.
+
+Show a simple readable error when playback cannot continue.
+
+---
+
+# 23. Performance
+
+The app should:
+
+- Open quickly.
+- Avoid rescanning all metadata every launch.
+- Cache parsed metadata and chapter information.
+- Avoid loading full-size cover images unnecessarily.
+- Not copy large media files.
+- Handle audiobooks several gigabytes in size.
+- Handle books with hundreds of chapter files.
+
+---
+
+# 24. Privacy
+
+The app is entirely local.
+
+Requirements:
+
+- No analytics.
+- No telemetry.
+- No advertising SDKs.
+- No account.
+- No network requirement.
+- No upload of filenames, metadata, cover art, or listening history.
+
+Do not request INTERNET permission unless a dependency absolutely requires it.
+
+Prefer no INTERNET permission at all.
+
+---
+
+# 25. Testing Requirements
+
+At minimum, manually or automatically verify:
+
+## Folder audiobook
+
+- Add folder
+- Files appear in correct order
+- Play
+- Pause
+- +10 sec
+- -10 sec
+- +60 sec
+- -60 sec
+- Next chapter
+- Previous chapter
+- Auto-advance to next chapter
+- Resume after closing app
+- Playback speed retained
+- Cover art displayed
+- Background playback works
+- Lock-screen controls work
+- Bluetooth controls work
+
+## M4B audiobook
+
+- Add `.m4b`
+- Embedded chapters discovered
+- Chapter titles displayed
+- Next chapter works
+- Previous chapter works
+- Seeking across chapters works
+- Resume restores correct embedded chapter and timestamp
+- Cover art displayed
+- Playback speed retained
+- Background playback works
+
+## Persistence
+
+- Kill app process
+- Reopen
+- Library remains
+- Progress remains
+- Speed remains
+
+## Edge cases
+
+- `.m4b` with no chapter metadata
+- Audio file with no metadata
+- Missing cover
+- Book source deleted
+- Natural sort test with 1, 2, 10
+
+---
+
+# 26. Acceptance Criteria
+
+The MVP is complete when all of the following are true:
+
+1. User can add a folder-based audiobook.
+2. User can add a single `.m4b` audiobook.
+3. Folder audiobook files play in correct order.
+4. Embedded `.m4b` chapters are detected and navigable.
+5. Play/pause works.
+6. ±10-second seek works.
+7. ±60-second seek works.
+8. Previous/next chapter works.
+9. Playback speed works from at least 0.75x to 3.0x.
+10. Increased playback speed preserves voice pitch reasonably well.
+11. Cover art appears when embedded or locally available.
+12. Progress is saved automatically.
+13. Books resume from the saved location.
+14. Playback speed is remembered.
+15. Background playback works.
+16. Android notification and lock-screen media controls work.
+17. Bluetooth media controls work.
+18. Library persists after restart.
+19. Removing a library entry does not delete source files.
+20. App operates without accounts, servers, or network services.
+
+---
+
+# 27. Suggested Implementation Order
+
+Build in this order:
+
+## Phase 1: Project foundation
+
+- Create Android project.
+- Add Compose.
+- Add Media3.
+- Add persistence.
+- Add basic navigation.
+
+## Phase 2: Basic folder playback
+
+- SAF folder picker.
+- Scan supported audio files.
+- Natural sort.
+- Create Media3 playlist.
+- Play/pause.
+- Basic player UI.
+
+## Phase 3: Audiobook controls
+
+- ±10 sec.
+- ±60 sec.
+- Previous/next file.
+- Progress slider.
+- Playback speed.
+- Save progress.
+
+## Phase 4: Background playback
+
+- `MediaSessionService`.
+- Foreground media notification.
+- Lock-screen controls.
+- Bluetooth/headset controls.
+- Audio focus.
+
+## Phase 5: Metadata and artwork
+
+- Embedded title/author.
+- Embedded artwork.
+- Folder cover lookup.
+- Library thumbnails.
+
+## Phase 6: M4B support
+
+- Read M4B chapter metadata.
+- Cache chapters.
+- Show chapter names.
+- Map chapter navigation to timestamp seeking.
+- Save/restore current chapter and playback position.
+
+## Phase 7: Polish and edge cases
+
+- Empty folders.
+- Missing files.
+- Corrupt metadata.
+- Permission loss.
+- Dark mode.
+- Basic usability cleanup.
+
+---
+
+# 28. Development Rules for Claude Code
+
+Claude should follow these rules while implementing:
+
+1. Do not overengineer.
+2. Do not add features not listed in this PRD.
+3. Prefer built-in Android and Media3 APIs over custom implementations.
+4. Prefer maintained libraries over writing complex binary parsers from scratch.
+5. If `.m4b` chapter metadata requires custom parsing, isolate it behind one small parser component.
+6. Do not require FFmpeg.
+7. Do not create a backend.
+8. Do not add authentication.
+9. Do not add cloud services.
+10. Do not add analytics.
+11. Do not add ads.
+12. Do not add monetization.
+13. Keep dependencies minimal.
+14. Keep the UI simple.
+15. Use readable Kotlin.
+16. Add comments only where implementation details are not obvious.
+17. Avoid giant files, but do not create excessive one-class-per-concept abstraction.
+18. Keep playback logic centralized around Media3.
+19. Preserve original audiobook files.
+20. Make the app usable offline.
+
+---
+
+# 29. Build Output
+
+The project should produce a sideloadable debug/release APK.
+
+The README should contain:
+
+- How to open the project in Android Studio.
+- How to build from the command line.
+- How to create an APK.
+- Where the APK is generated.
+- Any required Android SDK/version information.
+- Any limitations in `.m4b` chapter parsing.
+
+---
+
+# 30. Definition of Done
+
+The project is considered complete when the user can:
+
+1. Install the APK on an Android phone.
+2. Add a folder of MP3 audiobook chapters.
+3. Add a chapterized `.m4b` audiobook.
+4. See the audiobook in a simple library.
+5. See cover art.
+6. Start listening.
+7. Seek ±10 seconds.
+8. Seek ±1 minute.
+9. Move between chapters.
+10. Change playback speed without chipmunk-style pitch changes.
+11. Lock the phone and keep listening.
+12. Use Bluetooth play/pause/next/previous controls.
+13. Close and reopen the app later.
+14. Resume at the exact saved listening position.
+
+Nothing beyond this scope is necessary for the MVP.
