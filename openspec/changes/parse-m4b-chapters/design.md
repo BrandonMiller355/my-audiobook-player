@@ -117,10 +117,14 @@ chapter starting beyond the movie duration is dropped.
 
 ### D5: Bounded, selective reading
 
-The walker descends only into `moov`, `udta`, `trak`, `mdia`, `minf`, `stbl`, `tref`, and `meta`
-(which carries 4 bytes of version/flags before its children). It resolves the chapter track's
-sample tables only — never the audio track's. Every table expansion is checked against a maximum
-entry count and against the remaining box payload before allocating.
+The walker descends only into `moov`, `udta`, `trak`, `mdia`, `minf`, `stbl`, and `tref`. It
+resolves the chapter track's sample tables only — never the audio track's. Every table expansion is
+checked against a maximum entry count and against the remaining box payload before allocating.
+
+*Revised during implementation:* `meta` was originally on that list, for the 4-byte version/flags
+quirk it carries before its children. Nothing chapters need lives inside it — `chpl` is a direct
+child of `udta`, and `ilst` holds cover art that Media3 already handles — so the walker never
+descends there and the quirk never arises.
 
 *Why:* real files put megabyte-scale sample tables in the audio track, and a corrupt file can
 declare an entry count of four billion. Both are handled by the same rule: never allocate based on
