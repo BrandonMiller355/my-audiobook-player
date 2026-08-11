@@ -4,19 +4,28 @@
 
 The merged Android manifest SHALL contain no `INTERNET` permission, no other network-related
 permission, and no storage permission. It SHALL declare only those permissions genuinely required
-for background media playback. This SHALL be verified against the merged manifest rather than the
-source manifest, so that permissions contributed by dependencies are caught.
+for background media playback. This SHALL be verified automatically against the **merged** manifest
+rather than the source manifest, and the build SHALL fail when a forbidden permission appears,
+including one contributed by a dependency during manifest merging.
 
 #### Scenario: Merged manifest is inspected after a build
 
-- **WHEN** a debug build completes and the merged manifest in the build output is inspected
+- **WHEN** a build completes and the merged manifest is inspected
 - **THEN** it declares no `android.permission.INTERNET`
 - **AND** it declares no `android.permission.ACCESS_NETWORK_STATE`
+- **AND** it declares no `android.permission.ACCESS_WIFI_STATE`
 
-#### Scenario: A dependency contributes a network permission
+#### Scenario: A dependency contributes a forbidden permission
 
-- **WHEN** a newly added dependency contributes a network permission during manifest merging
-- **THEN** the merged-manifest check fails and the permission is surfaced rather than shipped silently
+- **WHEN** a dependency contributes a forbidden permission during manifest merging
+- **THEN** the build fails naming the permission that appeared
+- **AND** the failure states that it must either be removed or deliberately justified
+
+#### Scenario: A contributed permission is removed rather than accepted
+
+- **WHEN** a playback dependency contributes `ACCESS_NETWORK_STATE` for streaming features this app does not use
+- **THEN** it is stripped from the merged manifest
+- **AND** playback of local files continues to work without it
 
 #### Scenario: No storage permission is declared
 
@@ -24,8 +33,8 @@ source manifest, so that permissions contributed by dependencies are caught.
 - **THEN** it declares no `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`, `MANAGE_EXTERNAL_STORAGE`, or `READ_MEDIA_AUDIO` permission
 - **AND** file access continues to come solely from Storage Access Framework grants
 
-#### Scenario: Only media-playback permissions are declared
+#### Scenario: Only playback-supporting permissions are declared
 
 - **WHEN** the merged manifest is inspected
-- **THEN** the only declared permissions are those required to run a foreground media playback service and post its notification
+- **THEN** the declared permissions are limited to those that background media playback requires — running a foreground media service, posting its notification, and holding a wake lock while audio plays with the screen off
 - **AND** any permission outside that set is treated as a regression to be justified or removed

@@ -1,3 +1,5 @@
+import com.android.build.api.artifact.SingleArtifact
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -44,6 +46,56 @@ ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 
+/**
+ * The app is entirely local and offline (PRD §24) and gets file access solely through Storage
+ * Access Framework grants (PRD §16). Neither promise is enforced by the source manifest — a
+ * dependency can contribute a permission during manifest merging, which is how Media3 brought in
+ * ACCESS_NETWORK_STATE. This fails the build if any of these reach the merged manifest, so an
+ * upgrade cannot reintroduce one silently.
+ */
+val forbiddenPermissions = listOf(
+    "android.permission.INTERNET",
+    "android.permission.ACCESS_NETWORK_STATE",
+    "android.permission.ACCESS_WIFI_STATE",
+    "android.permission.READ_EXTERNAL_STORAGE",
+    "android.permission.WRITE_EXTERNAL_STORAGE",
+    "android.permission.MANAGE_EXTERNAL_STORAGE",
+    "android.permission.READ_MEDIA_AUDIO",
+)
+
+androidComponents {
+    onVariants { variant ->
+        val mergedManifest = variant.artifacts.get(SingleArtifact.MERGED_MANIFEST)
+        val variantName = variant.name.replaceFirstChar { it.uppercase() }
+
+        val verify = tasks.register("verify${variantName}Permissions") {
+            group = "verification"
+            description = "Fails if a forbidden permission reached the merged $variantName manifest."
+            inputs.file(mergedManifest)
+            val forbidden = forbiddenPermissions
+            doLast {
+                val manifestText = mergedManifest.get().asFile.readText()
+                val found = forbidden.filter { manifestText.contains("\"$it\"") }
+                if (found.isNotEmpty()) {
+                    throw GradleException(
+                        buildString {
+                            appendLine("Forbidden permission(s) in the merged $variantName manifest:")
+                            found.forEach { appendLine("  - $it") }
+                            appendLine()
+                            appendLine("A dependency contributed these during manifest merging.")
+                            appendLine("Either remove it with tools:node=\"remove\" in AndroidManifest.xml,")
+                            appendLine("or justify keeping it and update the app-shell spec — do not")
+                            appendLine("weaken this list without deciding deliberately.")
+                        },
+                    )
+                }
+            }
+        }
+
+        tasks.matching { it.name == "assemble$variantName" }.configureEach { dependsOn(verify) }
+    }
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -57,6 +109,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.navigation.compose)
+
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.session)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
