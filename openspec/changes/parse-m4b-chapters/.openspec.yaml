@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-08-11
+goal: A standalone, unit-tested parser that turns an .m4b byte stream into an
+  ordered chapter list, or reports the file as unchaptered.

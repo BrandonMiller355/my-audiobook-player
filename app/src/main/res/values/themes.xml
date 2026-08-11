@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      A bare platform theme. Colors come from Compose (AudiobooksTheme); this only
+      controls the window before the first frame, so it just needs the right
+      background to avoid a flash of the wrong shade on launch.
+    -->
+    <style name="Theme.Audiobooks" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>

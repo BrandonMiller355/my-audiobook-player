@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-08-11
+goal: A sideloadable debug APK that launches to an empty Library screen, with
+  the agreed stack wired up and no feature logic yet.
