@@ -19,8 +19,8 @@
 
 - [x] 3.1 Define the Material 3 light and dark color schemes, typography, and the `AudiobooksTheme` composable selecting the scheme via `isSystemInDarkTheme()`, with dynamic color deliberately not used (design D6)
 - [x] 3.2 Apply the theme in `MainActivity` with `setContent`, using edge-to-edge defaults consistent with the target SDK
-- [ ] 3.3 Confirm the activity renders in both light and dark, and survives a system theme change while in the foreground, without restart or crash
-  - **Needs a device.** No phone is connected and no emulator AVD exists (the emulator binary is installed but there are no system images). Verified statically only: `AudiobooksTheme` selects its scheme via `isSystemInDarkTheme()`, and `values-night/` overrides exist for the pre-Compose window background. Runtime confirmation happens with 8.2.
+- [x] 3.3 Confirm the activity renders in both light and dark, and survives a system theme change while in the foreground, without restart or crash
+  - Verified on an API 36 emulator: `cmd uimode night yes` recomposed the running activity to the dark scheme with the same process still focused, no restart and no crash in logcat.
 
 ## 4. Navigation and placeholder screens
 
@@ -28,7 +28,7 @@
 - [x] 4.2 Write the Library screen: a top app bar with the app title and a centered empty state stating that no audiobooks have been added — no add button yet, since the picker belongs to a later change
 - [x] 4.3 Write the Player placeholder screen: renders the `bookId` route argument and nothing else, deliberately not the PRD §20.2 layout
 - [ ] 4.4 Verify forward navigation into `player/{bookId}` passes the argument through, that system back returns to Library, and that back from Library exits the app cleanly
-  - **Blocked, deferred.** There is no UI affordance that reaches the Player: the Library has no books and deliberately no add button, so forward navigation cannot be triggered by hand in this change. The route strings are covered by `RoutesTest`, and end-to-end verification moves to the change that adds the library list — the first thing that can tap into a book. Back-from-Library-exits is covered by 8.1 once a device is available.
+  - **Deferred, not blocked by tooling.** There is no UI affordance that reaches the Player: the Library has no books and deliberately no add button, so forward navigation cannot be triggered even with a device attached. The route strings are covered by `RoutesTest`, and end-to-end verification moves to the change that adds the library list — the first thing that can tap into a book.
 
 ## 5. Test wiring
 
@@ -51,11 +51,18 @@ No audiobook fixture is required for this change — there is nothing yet that c
 The PRD §25 playback, persistence, and metadata checks do not apply and are verified by later
 changes.
 
-**These are the owner's to run.** No device was connected when this change was implemented and
-no emulator AVD exists on the machine, so every item below is unverified. Build and install with
-the commands in the README.
+**Verified on an emulator, not on the phone.** No device was connected, so an AVD was created:
+`medium_phone` on `system-images/android-36/google_apis/x86_64` (API 36 is the newest image
+published; API 37 has none yet). `minSdk 26` governs installability, so API 36 is a valid host
+for a `targetSdk 37` app. Everything below is emulator-verifiable — none of it depends on real
+audio hardware. Re-running these on the phone is still worthwhile but nothing here is expected
+to differ.
 
-- [ ] 8.1 Install the debug APK on the phone and confirm it launches to the Library empty state with no permission prompt and no crash
-- [ ] 8.2 Toggle the system theme to dark and back, confirming the app follows it
-- [ ] 8.3 Kill the app process from recents, relaunch, and confirm it returns to the Library screen without error
-- [ ] 8.4 Confirm the app's entry in Android Settings → App info → Permissions shows no permissions requested
+- [x] 8.1 Install the debug APK on the phone and confirm it launches to the Library empty state with no permission prompt and no crash
+  - Installed and launched; first frame in 1.376s, empty state rendered, no runtime permission dialog, no `FATAL EXCEPTION` in logcat.
+- [x] 8.2 Toggle the system theme to dark and back, confirming the app follows it
+  - Screenshots captured in both schemes; the running activity followed the change in place.
+- [x] 8.3 Kill the app process from recents, relaunch, and confirm it returns to the Library screen without error
+  - `am force-stop` cleared the pid; relaunch produced a new pid and focus returned to `MainActivity` on the Library screen.
+- [x] 8.4 Confirm the app's entry in Android Settings → App info → Permissions shows no permissions requested
+  - `dumpsys package` lists exactly one requested permission, AndroidX Core's app-private signature-level `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`. No `INTERNET`, no `ACCESS_NETWORK_STATE`, and no runtime permissions at all — so the Settings permissions list is empty from the user's point of view.
