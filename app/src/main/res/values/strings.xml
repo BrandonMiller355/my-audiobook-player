@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Audiobooks</string>
+    <string name="library_title">Audiobooks</string>
+    <string name="library_empty_title">No audiobooks yet</string>
+    <string name="library_empty_body">Books you add will appear here.</string>
+    <string name="player_back">Back to library</string>
+</resources>
