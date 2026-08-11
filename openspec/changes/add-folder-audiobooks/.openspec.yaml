@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-08-11
+goal: The owner can add a folder of mp3 chapters, see it in a library that
+  survives restart and reboot, open it, and remove it without touching the
+  source files.
