@@ -69,7 +69,7 @@ is similarly easy to get subtly wrong — resuming when it should not is worse t
 **Testing constraint worth stating up front**: the emulator fixtures used for the library change
 are **zero-byte files**, which will not decode. Verifying that audio actually plays requires real
 audio on the device — a small real folder pushed to the emulator, and ideally a pass on the phone,
-since Bluetooth and lock-screen behaviour cannot be judged from an emulator at all.
+since Bluetooth and lock-screen behavior cannot be judged from an emulator at all.
 
 ## Non-goals
 
@@ -83,6 +83,6 @@ This change deliberately does **not**:
 - Support `.m4b` books, or use the chapter parser. A single-file book needs chapter-aware
   previous/next, which needs the mapping layer that does not exist yet.
 - Show cover art in the notification or the player. Artwork belongs to the metadata change.
-- Add a sleep timer, EQ, normalisation, Chromecast, or Android Auto — all PRD non-goals.
+- Add a sleep timer, EQ, normalization, Chromecast, or Android Auto — all PRD non-goals.
 - Read chapter durations. The Player shows the current item's position and duration from the player
   itself, not a precomputed total for the whole book.

@@ -28,7 +28,7 @@ rows, each carrying a `mediaUri` the app holds a persisted read grant for.
 - Audio plays, and keeps playing with the screen off and the app backgrounded.
 - The system notification, lock screen, and Bluetooth play/pause and track buttons all work.
 - Audio focus is handled the way a person expects during a phone call or a notification chime.
-- Playback ownership is settled once, so later changes add behaviour rather than move it.
+- Playback ownership is settled once, so later changes add behavior rather than move it.
 
 **Non-Goals:**
 
@@ -75,7 +75,7 @@ setAudioAttributes(attrs, handleAudioFocus = true)
 setHandleAudioBecomingNoisy(true)
 ```
 
-*Why:* PRD §15 asks for standard behaviour, and PRD §28 rule 3 prefers built-in APIs. Rolling focus
+*Why:* PRD §15 asks for standard behavior, and PRD §28 rule 3 prefers built-in APIs. Rolling focus
 by hand is a classic source of "resumed during a phone call" bugs.
 
 `AUDIO_CONTENT_TYPE_SPEECH` rather than `MUSIC` is deliberate: it tells the system this is spoken
@@ -126,7 +126,7 @@ treated as a supported state, not an error.
 the right actions wired to the session. Hand-rolling it means reimplementing action dispatch for no
 gain. Artwork will slot into the same notification when the metadata change provides it.
 
-### D7: No `ForwardingPlayer` yet — for folder books, stock behaviour *is* chapter navigation
+### D7: No `ForwardingPlayer` yet — for folder books, stock behavior *is* chapter navigation
 
 PRD §14 requires previous/next media actions to move between chapters. In a folder book each chapter
 is its own `MediaItem`, so ExoPlayer's own `seekToNext`/`seekToPrevious` already do exactly that,
@@ -155,7 +155,7 @@ real interruption (an incoming call or another media app), not just by reading t
 will fail to play. Real audio must be pushed to the device before any playback claim is credible.
 Called out as its own task rather than discovered mid-verification.
 
-**Bluetooth and lock-screen behaviour cannot be judged on an emulator** → those checks are the
+**Bluetooth and lock-screen behavior cannot be judged on an emulator** → those checks are the
 owner's, on the phone. The emulator can cover play/pause, backgrounding, and notification presence.
 
 **`POST_NOTIFICATIONS` denial silently degrades the experience** → handled as a supported state
@@ -171,6 +171,6 @@ permissions; the library keeps working exactly as it does today.
 - **Should playback resume automatically when the app is reopened mid-book?** Needs saved progress
   to be meaningful, so it belongs with the transport-controls change. Noted here because D2's
   playlist ownership should be revisited at the same time.
-- **Behaviour at the end of the last chapter.** Stopping is the obvious default; PRD §7.4 only
+- **Behavior at the end of the last chapter.** Stopping is the obvious default; PRD §7.4 only
   specifies that next-chapter does nothing at the end. Left as stop-at-end unless it feels wrong in
   use.

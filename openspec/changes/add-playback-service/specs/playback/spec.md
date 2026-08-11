@@ -124,7 +124,7 @@ SHALL leave the foreground when playback stops.
 ### Requirement: Playback follows Android audio focus conventions
 
 The app SHALL request audio focus, and SHALL duck, pause, and resume in line with standard Android
-behaviour rather than playing over other audio.
+behavior rather than playing over other audio.
 
 #### Scenario: A phone call arrives
 

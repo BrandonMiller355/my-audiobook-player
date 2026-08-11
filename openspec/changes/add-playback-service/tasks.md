@@ -52,7 +52,7 @@ playback can be verified against them.
 
 ## 8. Verification on the phone
 
-**These need real hardware and are the owner's to run.** Bluetooth behaviour, lock-screen controls,
+**These need real hardware and are the owner's to run.** Bluetooth behavior, lock-screen controls,
 and a genuine phone call cannot be judged from an emulator, and PRD §14 and §15 are mostly about
 exactly those.
 
