@@ -2,7 +2,18 @@
 <resources>
     <string name="app_name">Audiobooks</string>
     <string name="library_title">Audiobooks</string>
+    <string name="library_add">Add</string>
     <string name="library_empty_title">No audiobooks yet</string>
-    <string name="library_empty_body">Books you add will appear here.</string>
+    <string name="library_empty_body">Tap Add and choose the folder that holds a book\'s audio files.</string>
+    <string name="library_unavailable">Source folder unavailable</string>
+    <plurals name="library_chapter_count">
+        <item quantity="one">%d chapter</item>
+        <item quantity="other">%d chapters</item>
+    </plurals>
+    <string name="library_remove_title">Remove from library?</string>
+    <string name="library_remove_body">“%1$s” will be removed from your library. The audio files on your device are not deleted.</string>
+    <string name="library_remove_confirm">Remove</string>
+    <string name="library_remove_cancel">Cancel</string>
     <string name="player_back">Back to library</string>
+    <string name="player_unknown_book">Book not found</string>
 </resources>

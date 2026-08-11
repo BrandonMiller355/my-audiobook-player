@@ -10,7 +10,7 @@ What is actually on disk under `H:\eBooks`:
 | Born To Run | **128 mp3s, flat**, `1-01 … 9-15` (9 discs) | ordering must handle disc-track names; scan must be fast |
 | I Am Legend | 9 mp3s, `01 of 09`, **no image file at all** | no cover to find; embedded art only |
 | Metro 2033 | audio in an `ENGLISH AUDIOBOOK` **subfolder**, ebook in a sibling | picked folder may be a parent |
-| Project Hail Mary | audio one level down, `.azw3` at the top level | non-audio files must be ignored |
+| Project Hail Mary | audio **two** levels down (`ProjectHailMary / … - Audiobook / Andy Weir - Project Hail Mary /`) | picked folder may be well above the audio |
 | **Expanse, The** | **357 mp3s spanning nine books** under `Audiobooks/The Expanse/` | recursion would be catastrophic |
 | The Fisherman | a folder containing a single `.m4b` | "folder" does not imply mp3 |
 | Mistborn | 7 `.m4b` files in one folder | not this change |
@@ -46,7 +46,7 @@ plausibly picks would produce a single 357-chapter "book" spanning an entire ser
 that degrades gracefully, but a useless library entry that is tedious to undo. Non-recursion is
 predictable: what you picked is what you get.
 
-*Cost, accepted:* Metro 2033 and Project Hail Mary keep their audio one level down, so picking
+*Cost, accepted:* Metro 2033 keeps its audio one level down and Project Hail Mary two, so picking
 their top folder finds nothing. That path is not silent — it surfaces the "no supported audio
 files here" error from PRD §22, which tells the user to pick the inner folder. A wrong-but-quiet
 result would be worse than a clear refusal.
@@ -64,8 +64,12 @@ explicit projection of document id, display name, and MIME type.
 
 *Why:* `DocumentFile.listFiles()` performs a separate IPC round trip per child and then another
 per attribute read. On the 128-file Born To Run folder that is hundreds of round trips for data
-one cursor already contains. `documentfile` is still used, but only to resolve the tree URI to its
-document id — the narrow job it is good at.
+one cursor already contains.
+
+*Revised during implementation:* `androidx.documentfile` was going to be kept for the narrow job of
+resolving the tree URI to its document id and display name. It turned out to be unnecessary —
+`DocumentsContract.getTreeDocumentId` and a one-row query cover both — so the dependency was
+dropped rather than added. Fewer dependencies is the PRD §28 rule 13 preference anyway.
 
 ### D3: Natural sort on file names, with metadata ordering deferred
 

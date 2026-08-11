@@ -53,10 +53,11 @@ several design questions that would otherwise have been guesswork; they are reco
 entities, DAO, database), a rewritten `LibraryScreen` with a ViewModel. `AudiobooksApp` gains the
 wiring to construct them. `PlayerScreen` stays a placeholder.
 
-**Dependencies**: Adds **Room** (`room-runtime`, `room-ktx`, `room-compiler` via KSP) and
-**`androidx.documentfile`**, all already declared in the version catalog. Room is the persistence
-choice already agreed in `config.yaml`; `documentfile` is used for the narrow job of resolving a
-tree URI to a document URI, not for its slow directory listing. KSP is a new Gradle plugin and its
+**Dependencies**: Adds **Room** (`room-runtime`, `room-ktx`, `room-compiler` via KSP), already
+declared in the version catalog and the persistence choice agreed in `config.yaml`, plus
+`lifecycle-runtime-compose` for lifecycle-aware state collection. `androidx.documentfile` was
+expected to be needed and turned out not to be — `DocumentsContract` covers the whole job — so it
+was **not** added. KSP is a new Gradle plugin and its
 version must be matched to Kotlin 2.4.10 — pinning it is an explicit task, since the version scheme
 changed and a mismatch fails at build time rather than silently.
 
