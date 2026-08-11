@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-08-11
+goal: Tap a book, press play, hear it; lock the phone or switch apps and it
+  keeps playing, with working notification and Bluetooth controls and correct
+  audio-focus behaviour.
