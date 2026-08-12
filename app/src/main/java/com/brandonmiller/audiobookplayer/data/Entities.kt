@@ -19,6 +19,17 @@ data class AudiobookEntity(
     val title: String,
     val addedAt: Long,
     val lastPlayedAt: Long? = null,
+    /**
+     * Saved playback position, stored as raw Media3 player coordinates rather than
+     * chapter-domain ones (PRD §19 explicitly allows "simpler equivalent storage"). These
+     * round-trip through `controller.seekTo(mediaItemIndex, positionMs)` with no translation for
+     * either book shape — for a single-item `.m4b` book, [lastPositionMs] already *is* the
+     * absolute book position. Null means no progress has been saved yet.
+     */
+    val lastMediaItemIndex: Int? = null,
+    val lastPositionMs: Long? = null,
+    /** This book's own speed. Null means fall back to the last globally used speed (design D5). */
+    val playbackSpeed: Float? = null,
 )
 
 /**

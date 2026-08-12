@@ -47,4 +47,16 @@ interface LibraryDao {
     /** Chapters cascade. This removes the app's record only — never the user's files. */
     @Query("DELETE FROM audiobooks WHERE id = :audiobookId")
     suspend fun deleteBook(audiobookId: Long)
+
+    @Query(
+        """
+        UPDATE audiobooks
+        SET lastMediaItemIndex = :mediaItemIndex, lastPositionMs = :positionMs, lastPlayedAt = :playedAt
+        WHERE id = :audiobookId
+        """,
+    )
+    suspend fun updateProgress(audiobookId: Long, mediaItemIndex: Int, positionMs: Long, playedAt: Long)
+
+    @Query("UPDATE audiobooks SET playbackSpeed = :speed WHERE id = :audiobookId")
+    suspend fun updateSpeed(audiobookId: Long, speed: Float)
 }

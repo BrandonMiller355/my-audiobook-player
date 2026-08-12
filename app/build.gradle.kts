@@ -38,6 +38,11 @@ android {
     buildFeatures {
         compose = true
     }
+
+    // Robolectric needs a real merged manifest to construct a working Context/Application.
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
 }
 
 // Export the Room schema so future migrations have a committed baseline instead of
@@ -117,7 +122,10 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
+    implementation(libs.androidx.datastore.preferences)
+
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
 }
