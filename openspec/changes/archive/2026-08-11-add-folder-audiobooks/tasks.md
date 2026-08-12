@@ -36,7 +36,7 @@ Pure logic with no Android dependency, so it goes first and is fully unit tested
 - [x] 5.2 Take a persistable read permission on the returned tree URI (design D6)
 - [x] 5.3 Scan and insert off the main thread, in one transaction, with the folder name as the book title and file names as chapter titles (design D8)
 - [x] 5.4 Implement removal: delete the book and its chapters, and release the persisted URI permission — never touch the source files
-- [x] 5.5 Handle the picker being cancelled without changing the library or showing an error
+- [x] 5.5 Handle the picker being canceled without changing the library or showing an error
 
 ## 6. Library screen
 

@@ -70,25 +70,37 @@ config is set up — the MVP targets sideloaded debug builds (PRD §29).
 JVM unit tests live in `app/src/test/`. Reports land in
 `app/build/reports/tests/testDebugUnitTest/index.html`.
 
-## Verifying no network permission
+## Permissions
 
-The app must ship without `INTERNET` (PRD §24). The source manifest declares no permissions at
-all, but that is not the check that matters — a dependency can contribute a permission during
-manifest merging. Verify against the **merged** manifest:
+The app must ship without `INTERNET` and without any storage permission (PRD §24, §16). Checking
+the source manifest is not enough — a dependency can contribute a permission during manifest
+merging, which is exactly what Media3 did. **The build enforces this automatically:**
 
 ```powershell
-.\gradlew.bat processReleaseManifest
-Select-String -Path app\build\intermediates\merged_manifests\release\processReleaseManifest\AndroidManifest.xml `
-  -Pattern 'android.permission.(INTERNET|ACCESS_NETWORK_STATE|ACCESS_WIFI_STATE)'
+.\gradlew.bat verifyReleasePermissions   # or verifyDebugPermissions
 ```
 
-No output means the check passes. Run this after adding any dependency — Coil is the most
-likely future source of a merged-in network permission.
+`assembleDebug` and `assembleRelease` depend on it, so a forbidden permission fails the build
+naming the offender. The forbidden list lives in `app/build.gradle.kts`.
 
-One `<uses-permission>` does legitimately appear in the merged manifest:
-`com.brandonmiller.audiobookplayer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`. It is an
-app-private, signature-level permission that AndroidX Core defines for its own broadcast
-receivers. It is not a network permission and grants nothing to other apps.
+What the app legitimately declares, and why:
+
+| Permission | Why |
+|---|---|
+| `FOREGROUND_SERVICE` | Playback continues with the app backgrounded (PRD §13) |
+| `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | Required on API 34+ for a `mediaPlayback` service |
+| `POST_NOTIFICATIONS` | The media notification. Runtime permission on API 33+, requested at first playback, never at launch. Denial costs the notification, not the audio |
+| `WAKE_LOCK` | Contributed by `media3-exoplayer`; keeps the CPU awake while audio plays with the screen off |
+
+Two entries appear in the merged manifest that are not network or storage permissions:
+`com.brandonmiller.audiobookplayer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`, an app-private
+signature-level permission AndroidX Core defines for its own receivers, and Media3's
+`BluetoothValidationActivity`.
+
+**`ACCESS_NETWORK_STATE` is deliberately stripped.** `media3-exoplayer` declares it for adaptive
+streaming, which this app never does — every source is a local `content://` URI. It is removed
+with `tools:node="remove"` in `AndroidManifest.xml`, and playback was verified to work without it.
+If a Media3 upgrade reintroduces it, the build fails rather than shipping it.
 
 ## `.m4b` chapter parsing
 

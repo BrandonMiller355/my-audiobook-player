@@ -30,7 +30,7 @@ descend into subdirectories. One selected folder produces at most one audiobook.
 - **THEN** only the supported audio files become chapters
 - **AND** the other files are ignored without error
 
-### Requirement: Supported audio formats are recognised by file extension
+### Requirement: Supported audio formats are recognized by file extension
 
 The scanner SHALL accept files whose extension is one of `mp3`, `m4a`, `m4b`, `aac`, `ogg`, `opus`,
 `flac`, or `wav`, matched case-insensitively. Extension SHALL be the deciding signal, because

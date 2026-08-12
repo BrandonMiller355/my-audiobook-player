@@ -16,4 +16,8 @@
     <string name="library_remove_cancel">Cancel</string>
     <string name="player_back">Back to library</string>
     <string name="player_unknown_book">Book not found</string>
+    <string name="player_connecting">Connecting…</string>
+    <string name="player_play">Play</string>
+    <string name="player_pause">Pause</string>
+    <string name="player_chapter_of">Chapter %1$d of %2$d</string>
 </resources>

@@ -1,10 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  No <uses-permission> elements. The app is entirely local and offline (PRD §24).
-  Anything that appears in the MERGED manifest but not here came from a dependency
-  and must be justified before it ships — see README "Verifying no network permission".
+  Permissions are limited to what background media playback genuinely requires.
+  There is no network permission and no storage permission: the app is entirely local
+  and offline (PRD §24), and file access comes solely from Storage Access Framework
+  grants (PRD §16). The verify<Variant>Permissions Gradle task enforces this against the
+  MERGED manifest, which is where a dependency can slip one in.
 -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Playback continues with the app backgrounded or the screen off (PRD §13). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Required on API 34+ to run a foreground service of type mediaPlayback. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Runtime permission on API 33+. Requested when playback first starts, never at
+         launch. If refused, audio still plays; only the notification is missing. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Contributed by media3-exoplayer, which uses it to keep the CPU awake while audio
+         plays with the screen off. That is exactly this app's job, so it stays. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!--
+      media3-exoplayer declares ACCESS_NETWORK_STATE for adaptive streaming, which this app
+      never does — every source is a local content:// URI. Removed so the app keeps its
+      no-network posture (PRD §24). The verifyDebugPermissions / verifyReleasePermissions
+      Gradle task fails the build if this or any other forbidden permission reappears, so a
+      future Media3 upgrade cannot reintroduce it silently.
+    -->
+    <uses-permission
+        android:name="android.permission.ACCESS_NETWORK_STATE"
+        tools:node="remove" />
 
     <application
         android:allowBackup="true"
@@ -24,6 +49,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+          Exported so the system media stack and Bluetooth clients can reach the session —
+          that is what makes lock-screen and car controls work (PRD §14). It exposes the
+          media session only, not app data.
+        -->
+        <service
+            android:name=".playback.PlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
 
     </application>
 
