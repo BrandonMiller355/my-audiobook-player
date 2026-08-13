@@ -20,4 +20,11 @@
     <string name="player_play">Play</string>
     <string name="player_pause">Pause</string>
     <string name="player_chapter_of">Chapter %1$d of %2$d</string>
+    <string name="player_seek_back_1m">-1m</string>
+    <string name="player_seek_back_10s">-10s</string>
+    <string name="player_seek_forward_10s">+10s</string>
+    <string name="player_seek_forward_1m">+1m</string>
+    <string name="player_previous_chapter">Previous Chapter</string>
+    <string name="player_next_chapter">Next Chapter</string>
+    <string name="player_speed_label">Speed: %1$sx</string>
 </resources>

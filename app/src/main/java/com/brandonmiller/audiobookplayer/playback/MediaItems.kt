@@ -33,3 +33,7 @@ internal fun mediaIdFor(bookId: Long, chapterIndex: Int): String = "$bookId:$cha
 
 internal fun mediaIdBelongsTo(mediaId: String?, bookId: Long): Boolean =
     mediaId != null && mediaId.substringBefore(':') == bookId.toString()
+
+/** The book a media id belongs to, regardless of which book that is — used by the service, which
+ * does not otherwise track "which book is currently loaded" (design D6). */
+internal fun mediaIdBookId(mediaId: String?): Long? = mediaId?.substringBefore(':')?.toLongOrNull()

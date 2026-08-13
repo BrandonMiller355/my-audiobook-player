@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-08-12
+goal: ±10s/±60s seek, previous/next chapter with the 3-second rule for both book
+  types, a book-wide drag-to-seek scrubber, speed 0.75x-3.0x without pitch
+  shift, and playback position saved and restored.
