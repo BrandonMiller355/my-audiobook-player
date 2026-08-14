@@ -124,6 +124,13 @@ dependencies {
 
     implementation(libs.androidx.datastore.preferences)
 
+    // Local image loading only — the library list decodes a cover per row while scrolling and the
+    // Player decodes a large one, and Coil provides the asynchronous decoding, size-aware
+    // downsampling, and per-image cache that would otherwise be hand-rolled against BitmapFactory.
+    // Its core artifact pulls in no network dependency; verify<Variant>Permissions above proves the
+    // app still declares no INTERNET permission.
+    implementation(libs.coil.compose)
+
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)

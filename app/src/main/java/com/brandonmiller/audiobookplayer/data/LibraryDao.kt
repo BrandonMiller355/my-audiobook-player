@@ -12,7 +12,7 @@ interface LibraryDao {
     @Query(
         """
         SELECT a.id AS id, a.title AS title, a.sourceUri AS sourceUri,
-               COUNT(c.id) AS chapterCount
+               COUNT(c.id) AS chapterCount, a.artworkPath AS artworkPath
         FROM audiobooks a
         LEFT JOIN chapters c ON c.audiobookId = a.id
         GROUP BY a.id
@@ -59,4 +59,11 @@ interface LibraryDao {
 
     @Query("UPDATE audiobooks SET playbackSpeed = :speed WHERE id = :audiobookId")
     suspend fun updateSpeed(audiobookId: Long, speed: Float)
+
+    /**
+     * Written after the book itself, because the cover file is named for the book id and there is
+     * no id until the insert has happened. A book with no cover simply never gets this call.
+     */
+    @Query("UPDATE audiobooks SET artworkPath = :path WHERE id = :audiobookId")
+    suspend fun updateArtworkPath(audiobookId: Long, path: String)
 }

@@ -45,6 +45,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.brandonmiller.audiobookplayer.R
+import com.brandonmiller.audiobookplayer.ui.BookCover
+import com.brandonmiller.audiobookplayer.ui.PlayerCoverSize
 import java.util.Locale
 
 /** PRD §9's fixed speed stops — discrete values, not a continuum, hence a menu rather than a slider. */
@@ -129,6 +131,10 @@ fun PlayerScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
+                BookCover(artworkPath = state.artworkPath, size = PlayerCoverSize)
+
+                Spacer(Modifier.height(24.dp))
+
                 Text(
                     text = state.chapterTitle,
                     style = MaterialTheme.typography.titleMedium,

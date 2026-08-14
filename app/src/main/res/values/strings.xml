@@ -3,9 +3,12 @@
     <string name="app_name">Audiobooks</string>
     <string name="library_title">Audiobooks</string>
     <string name="library_add">Add</string>
+    <string name="library_add_folder">Add a folder</string>
+    <string name="library_add_file">Add a single file</string>
     <string name="library_empty_title">No audiobooks yet</string>
-    <string name="library_empty_body">Tap Add and choose the folder that holds a book\'s audio files.</string>
-    <string name="library_unavailable">Source folder unavailable</string>
+    <string name="library_empty_body">Tap Add, then choose the folder that holds a book\'s audio files or a single .m4b file.</string>
+    <string name="library_unavailable">Source unavailable</string>
+    <string name="library_cover">Cover art</string>
     <plurals name="library_chapter_count">
         <item quantity="one">%d chapter</item>
         <item quantity="other">%d chapters</item>

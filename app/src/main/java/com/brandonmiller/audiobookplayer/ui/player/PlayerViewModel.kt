@@ -15,7 +15,9 @@ import androidx.media3.common.Timeline
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.brandonmiller.audiobookplayer.data.AudiobookDatabase
+import com.brandonmiller.audiobookplayer.data.ChapterEntity
 import com.brandonmiller.audiobookplayer.data.LibraryDao
+import com.brandonmiller.audiobookplayer.data.SOURCE_TYPE_M4B
 import com.brandonmiller.audiobookplayer.data.SpeedPreferences
 import com.brandonmiller.audiobookplayer.playback.PlaybackService
 import com.brandonmiller.audiobookplayer.playback.chapterTimeline
@@ -46,6 +48,8 @@ data class PlayerUiState(
     /** Best-effort total — grows as more chapter durations resolve; see design D4. */
     val bookDurationMs: Long = 0,
     val speed: Float = 1.0f,
+    /** Path to this book's cached cover, or null to show the placeholder. */
+    val artworkPath: String? = null,
     val errorMessage: String? = null,
 )
 
@@ -70,6 +74,15 @@ class PlayerViewModel(
      * the live timeline for those.
      */
     private var chapterDurationsMs: List<Long?> = emptyList()
+
+    /**
+     * The book's chapters as stored, kept so the Player can name the current one (design D6). Read
+     * here rather than from `currentMediaItem.mediaMetadata.title`, which for a single-item `.m4b`
+     * book is the book's name on every chapter. For a folder book this is the row the chapter came
+     * from rather than a copy of it that made a round trip through the session, so what is
+     * displayed does not change.
+     */
+    private var chapters: List<ChapterEntity> = emptyList()
 
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -113,9 +126,14 @@ class PlayerViewModel(
         viewModelScope.launch {
             val book = withContext(Dispatchers.IO) { dao.findBook(bookId) } ?: return@launch
             val chapters = withContext(Dispatchers.IO) { dao.chaptersFor(bookId) }
+            this@PlayerViewModel.chapters = chapters
 
             _state.update {
-                it.copy(bookTitle = book.title, chapterCount = chapters.size)
+                it.copy(
+                    bookTitle = book.title,
+                    chapterCount = chapters.size,
+                    artworkPath = book.artworkPath,
+                )
             }
 
             // Reopening the Player for the book that is already loaded must not restart it from
@@ -141,7 +159,10 @@ class PlayerViewModel(
                 _state.update { it.copy(speed = speed) }
 
                 chapterDurationsMs = List(mediaItems.size) { null }
-                resolveDurationsInBackground(mediaItems)
+                // A single-file book's boundaries are exact and already on its media item, so
+                // there is nothing to resolve — and resolving would mean opening a multi-gigabyte
+                // container to learn a figure that was stored at add time (design D2).
+                if (book.sourceType != SOURCE_TYPE_M4B) resolveDurationsInBackground(mediaItems)
             }
             readPlayerState()
         }
@@ -185,7 +206,7 @@ class PlayerViewModel(
             it.copy(
                 isPlaying = player.isPlaying,
                 chapterNumber = location.chapterIndex + 1,
-                chapterTitle = player.currentMediaItem?.mediaMetadata?.title?.toString().orEmpty(),
+                chapterTitle = chapters.getOrNull(location.chapterIndex)?.title.orEmpty(),
                 absolutePositionMs = timeline.absolutePosition(location),
                 bookDurationMs = timeline.totalDurationMs(),
             )

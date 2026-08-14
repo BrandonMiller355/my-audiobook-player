@@ -16,3 +16,16 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         db.execSQL("ALTER TABLE audiobooks ADD COLUMN playbackSpeed REAL")
     }
 }
+
+/**
+ * Adds the two columns `.m4b` books need (`add-m4b-books` design D2 and D7). Additive and
+ * non-destructive in the same shape as [MIGRATION_1_2], with no backfill: an existing folder book
+ * keeps both null and behaves exactly as before — a null `endPositionMs` is the "duration not yet
+ * known" state `BookTimeline` already handles, and a null `artworkPath` shows the placeholder.
+ */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE chapters ADD COLUMN endPositionMs INTEGER")
+        db.execSQL("ALTER TABLE audiobooks ADD COLUMN artworkPath TEXT")
+    }
+}
