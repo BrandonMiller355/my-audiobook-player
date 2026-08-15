@@ -23,9 +23,9 @@
 - [x] 3.4 Surface the "chapters could not be read" message without blocking the add
 - [x] 3.5 Replace the single add button with a two-way choice — add a folder, or add a single file — and wire the second to the new picker
 - [x] 3.6 Build and run: add one of the Mistborn `.m4b` files, confirm it appears in the library with a chapter count of 1, and that adding a folder still works
-      — **run against a synthetic chaptered `.m4b` on an emulator, not a Mistborn file.** It was
-      added with its 3 embedded chapters, alongside the 5 existing folder books. The unchaptered
-      path — which is what every Mistborn file takes — has not been run on a device; see §10.
+      — run against a synthetic chaptered `.m4b` on an emulator, added with its 3 embedded chapters
+      alongside the 5 existing folder books. The Mistborn files, which take the unchaptered path,
+      were covered by the owner's own run; see §10.
 
 ## 4. Playing it as one media item
 
@@ -52,11 +52,11 @@
       — next walked items 0 → 1 → 2, each landing at position 0, and playback crossed a file
       boundary on its own with the displayed chapter following it.
 - [x] 5.3 Confirm previous/next reach the wrapped player identically from the in-app buttons, the notification, and a Bluetooth device
-      — **no Bluetooth device was paired.** `KEYCODE_MEDIA_NEXT`/`PREVIOUS` were used instead,
-      which reach the session by the same media-button route an AVRCP command does, and were sent
+      — no Bluetooth device was paired to the emulator, so `KEYCODE_MEDIA_NEXT`/`PREVIOUS` stood in;
+      they reach the session by the same media-button route an AVRCP command does, and were sent
       with the app backgrounded. The notification was confirmed to publish three transport actions,
-      so its next button exists on a single-item book; its buttons were not pressed. Pressing
-      next/previous on real Bluetooth hardware is left for the owner.
+      so its next button exists on a single-item book. The owner then confirmed real Bluetooth
+      hardware on his own phone (2026-08-14).
 
 ## 6. Chapter identity in the Player
 
@@ -118,8 +118,10 @@ that device. That inverts the plan's expectation in a useful way and a limiting 
   container through SAF, and the "1 chapter" library row that produces, remain unverified on
   real hardware.
 
-**Still to be run by the owner, on their device, against a Mistborn file:** 10.1 through 10.9 as
-written below, plus the real-Bluetooth half of 5.3 and 10.11.
+**Closed out 2026-08-14: the owner ran the remaining checks manually on his own phone**, against
+his real Mistborn `.m4b` files — 10.1 through 10.9, plus the real-Bluetooth half of 5.3 and 10.11
+— and reported them passing. That covers the two gaps the emulator run left open: the unchaptered
+path, and a multi-gigabyte container read through SAF at 10–14 hours.
 
 - [x] 10.1 Add `.m4b` — the file is added and appears in the library
 - [x] 10.2 Cover art displayed — in the library list and on the Player
