@@ -6,10 +6,12 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 const val SOURCE_TYPE_FOLDER = "FOLDER"
+const val SOURCE_TYPE_M4B = "M4B"
 
 /**
- * A book in the library. [sourceUri] is the SAF tree URI the user picked, held under a
- * persistable read permission — the app never copies the audio itself (PRD §16).
+ * A book in the library. [sourceUri] is what the user picked, held under a persistable read
+ * permission — a SAF tree URI for a folder book, a single document URI for an `.m4b` — and the
+ * app never copies the audio itself (PRD §16).
  */
 @Entity(tableName = "audiobooks")
 data class AudiobookEntity(
@@ -30,15 +32,18 @@ data class AudiobookEntity(
     val lastPositionMs: Long? = null,
     /** This book's own speed. Null means fall back to the last globally used speed (design D5). */
     val playbackSpeed: Float? = null,
+    /**
+     * Path to the downsampled cover cached in app-private storage, or null for "show the
+     * placeholder" (`add-m4b-books` design D7). The bytes are never stored here: a blob column
+     * would be read by the library query on every emission.
+     */
+    val artworkPath: String? = null,
 )
 
 /**
  * One chapter. Shaped for both book types up front (PRD §19): a folder book gives every chapter
- * its own [mediaUri] with [startPositionMs] zero, while an `.m4b` book will share one URI across
- * chapters distinguished by their start offsets. That way m4b support adds rows, not a migration.
- *
- * Duration is absent on purpose — obtaining it means opening every file, which belongs with the
- * metadata change.
+ * its own [mediaUri] with [startPositionMs] zero, while an `.m4b` book shares one URI across
+ * chapters distinguished by their start offsets. That way m4b support added rows, not a migration.
  */
 @Entity(
     tableName = "chapters",
@@ -59,6 +64,16 @@ data class ChapterEntity(
     val title: String,
     val mediaUri: String,
     val startPositionMs: Long = 0,
+    /**
+     * Where this chapter ends within [mediaUri], or null when that is not known.
+     *
+     * An `.m4b`'s ends come free with a parse that is already happening, and storing them makes
+     * the scrubber's total exact the moment the book opens. A folder chapter keeps this null and
+     * resolves its duration at runtime instead: obtaining it means opening every one of up to 128
+     * files, which is why `add-folder-audiobooks` design D5 chose not to persist it
+     * (`add-m4b-books` design D2).
+     */
+    val endPositionMs: Long? = null,
 )
 
 /** A library row: the book plus the one derived figure the list shows. */
@@ -67,4 +82,5 @@ data class LibraryBook(
     val title: String,
     val sourceUri: String,
     val chapterCount: Int,
+    val artworkPath: String? = null,
 )

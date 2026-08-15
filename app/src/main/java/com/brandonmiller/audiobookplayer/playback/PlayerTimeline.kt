@@ -5,19 +5,25 @@ import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 
 /**
- * Builds a [BookTimeline] from [resolvedDurations] — read eagerly via [resolveChapterDurations],
- * independent of playback — falling back to the player's own live [Timeline] for any chapter not
- * yet resolved (belt and braces: if resolution failed for some reason, playback still fills it in
- * naturally as before). Chapter durations are not stored anywhere persistent (folder books never
- * persisted them; see `add-folder-audiobooks` design D5), so both sources are recomputed each time
- * this is needed rather than cached here.
+ * Builds a [BookTimeline] from whichever source the loaded book has.
  *
- * Assumes a folder book's shape: one chapter per [androidx.media3.common.MediaItem]. There is
- * nothing to distinguish an `.m4b` book by yet — no book of that shape is wired into the app — so
- * this is the only source [BookTimeline] is built from today. It reduces to the same [ChapterBounds]
- * shape either way, which is the point of [BookTimeline] accepting both.
+ * A single-file book carries its chapter boundaries in the current item's metadata extras, put
+ * there by [mediaItemsFor] when the playlist was set (design D1). That branch is checked first
+ * because it is exact and available immediately — nothing has to resolve.
+ *
+ * A folder book has no such extras and is derived per media item, from [resolvedDurations] — read
+ * eagerly via [resolveChapterDurations], independent of playback — falling back to the player's own
+ * live [Timeline] for any chapter not yet resolved (belt and braces: if resolution failed for some
+ * reason, playback still fills it in naturally as before). Folder chapter durations are not stored
+ * anywhere persistent (see `add-folder-audiobooks` design D5), so both sources are recomputed each
+ * time this is needed rather than cached here.
+ *
+ * Both shapes reduce to the same [ChapterBounds], which is the point of [BookTimeline] accepting
+ * both.
  */
 internal fun Player.chapterTimeline(resolvedDurations: List<Long?> = emptyList()): BookTimeline {
+    singleFileChapterBounds()?.let { return BookTimeline(it) }
+
     val timeline = currentTimeline
     val window = Timeline.Window()
     val bounds = (0 until mediaItemCount).map { index ->
@@ -34,3 +40,29 @@ internal fun Player.chapterTimeline(resolvedDurations: List<Long?> = emptyList()
 
 internal fun Player.currentLocation(timeline: BookTimeline): Location =
     timeline.locate(currentMediaItemIndex, currentPosition)
+
+/** Null for a folder book, whose items carry no bounds — that is how the two shapes are told apart. */
+private fun Player.singleFileChapterBounds(): List<ChapterBounds>? {
+    val extras = currentMediaItem?.mediaMetadata?.extras ?: return null
+    val starts = extras.getLongArray(EXTRA_CHAPTER_STARTS_MS)?.takeIf { it.isNotEmpty() } ?: return null
+    return chapterBoundsFrom(starts, extras.getLong(EXTRA_BOOK_DURATION_MS))
+}
+
+/**
+ * Every chapter of a single-file book lives at media item 0, its end chained from the next
+ * chapter's start. The last chapter's end is the book's duration, or `null` when that is not known
+ * — the same "not yet known" state a folder chapter's unresolved duration produces.
+ */
+internal fun chapterBoundsFrom(startsMs: LongArray, bookDurationMs: Long): List<ChapterBounds> =
+    startsMs.mapIndexed { index, startMs ->
+        ChapterBounds(
+            chapterIndex = index,
+            mediaItemIndex = 0,
+            startInItemMs = startMs,
+            endInItemMs = if (index + 1 < startsMs.size) {
+                startsMs[index + 1]
+            } else {
+                bookDurationMs.takeIf { it > startMs }
+            },
+        )
+    }

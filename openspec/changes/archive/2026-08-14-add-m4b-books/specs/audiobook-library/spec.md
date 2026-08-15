@@ -1,30 +1,29 @@
-# audiobook-library Specification
+## ADDED Requirements
 
-## Purpose
-TBD - created by archiving change add-folder-audiobooks. Update Purpose after archive.
-## Requirements
-### Requirement: The user can add a folder audiobook through the system picker
+### Requirement: The add control offers both a folder and a single file
 
-The app SHALL let the user add a book by choosing a folder with the Android Storage Access
-Framework, and SHALL NOT request any broad storage permission.
+The Library screen SHALL let the user choose between adding a folder of audio files and adding a
+single file, rather than assuming one of them. Both choices SHALL lead to the same library list
+and the same Player.
 
-#### Scenario: Adding a folder from the library screen
+#### Scenario: Choosing what to add
 
-- **WHEN** the user taps the add control and selects a folder containing audio files
-- **THEN** the folder becomes an audiobook in the library
-- **AND** the book's title defaults to the folder name
-- **AND** each chapter's title defaults to its file name without the extension
+- **WHEN** the user activates the add control
+- **THEN** both "add a folder" and "add a single file" are offered
+- **AND** choosing either opens the corresponding system picker
 
-#### Scenario: No storage permission is requested
+#### Scenario: Dismissing the choice
 
-- **WHEN** the user adds a book
-- **THEN** no runtime storage permission dialog is shown
-- **AND** the app declares no storage permission in its manifest
+- **WHEN** the user dismisses the choice without picking either
+- **THEN** no picker opens and the library is unchanged
 
-#### Scenario: The user cancels the picker
+#### Scenario: Both book types in one library
 
-- **WHEN** the user opens the folder picker and dismisses it without choosing
-- **THEN** the library is unchanged and no error is shown
+- **WHEN** the library contains both a folder book and a single-file book
+- **THEN** both are listed together in the same list
+- **AND** tapping either opens the Player for it
+
+## MODIFIED Requirements
 
 ### Requirement: The library survives restart and reboot
 
@@ -48,28 +47,6 @@ after the process is killed and after the device restarts, with no re-picking.
 - **WHEN** a book is added
 - **THEN** the app stores references to the user's files
 - **AND** it does not copy the audio files into app storage
-
-### Requirement: The library lists the books that have been added
-
-The Library screen SHALL show each added book with its title and its number of chapters, and SHALL
-open the Player for a book when it is tapped.
-
-#### Scenario: Library with books
-
-- **WHEN** the library contains one or more books and the Library screen is shown
-- **THEN** each book is listed with its title and chapter count
-- **AND** the empty state is not shown
-
-#### Scenario: Opening a book
-
-- **WHEN** the user taps a book in the list
-- **THEN** the app navigates to the Player destination for that book
-- **AND** the Player receives that book's identifier
-
-#### Scenario: Library with no books
-
-- **WHEN** the library contains no books
-- **THEN** the empty state is shown together with the add control
 
 ### Requirement: Removing a book never deletes the user's files
 
@@ -146,27 +123,3 @@ a whole or not at all.
 
 - **WHEN** storing a book's chapters fails partway through
 - **THEN** no partially scanned book is left in the library
-
-### Requirement: The add control offers both a folder and a single file
-
-The Library screen SHALL let the user choose between adding a folder of audio files and adding a
-single file, rather than assuming one of them. Both choices SHALL lead to the same library list
-and the same Player.
-
-#### Scenario: Choosing what to add
-
-- **WHEN** the user activates the add control
-- **THEN** both "add a folder" and "add a single file" are offered
-- **AND** choosing either opens the corresponding system picker
-
-#### Scenario: Dismissing the choice
-
-- **WHEN** the user dismisses the choice without picking either
-- **THEN** no picker opens and the library is unchanged
-
-#### Scenario: Both book types in one library
-
-- **WHEN** the library contains both a folder book and a single-file book
-- **THEN** both are listed together in the same list
-- **AND** tapping either opens the Player for it
-

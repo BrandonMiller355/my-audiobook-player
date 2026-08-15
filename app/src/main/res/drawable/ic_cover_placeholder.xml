@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Shown wherever a book has no cached cover, so a book without artwork reads as a book rather than
+  as blank space or a broken image. Deliberately flat and neutral: it sits beside real covers.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <path
+        android:fillColor="#3A3A3C"
+        android:pathData="M0,0h24v24h-24z" />
+
+    <path
+        android:fillColor="#8E8E93"
+        android:pathData="M7.5,5.5 L17,5.5 A1.5,1.5 0 0,1 18.5,7 L18.5,17 A1.5,1.5 0 0,1 17,18.5 L7.5,18.5 A1.5,1.5 0 0,1 6,17 L6,7 A1.5,1.5 0 0,1 7.5,5.5 Z" />
+
+    <path
+        android:fillColor="#3A3A3C"
+        android:pathData="M8.6,5.5h1.3v13h-1.3z" />
+
+</vector>

@@ -7,12 +7,15 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
@@ -41,6 +44,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.brandonmiller.audiobookplayer.R
 import com.brandonmiller.audiobookplayer.data.LibraryBook
+import com.brandonmiller.audiobookplayer.ui.BookCover
+import com.brandonmiller.audiobookplayer.ui.LibraryCoverSize
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -64,6 +69,10 @@ fun LibraryScreen(
         if (treeUri != null) viewModel.addFolder(treeUri)
     }
 
+    val pickFile = rememberLauncherForActivityResult(OpenPersistableDocument()) { documentUri ->
+        if (documentUri != null) viewModel.addM4bFile(documentUri)
+    }
+
     LaunchedEffect(message) {
         message?.let {
             snackbarHostState.showSnackbar(it)
@@ -78,9 +87,11 @@ fun LibraryScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.library_title)) },
                 actions = {
-                    TextButton(onClick = { pickFolder.launch(null) }, enabled = !busy) {
-                        Text(stringResource(R.string.library_add))
-                    }
+                    AddMenu(
+                        enabled = !busy,
+                        onAddFolder = { pickFolder.launch(null) },
+                        onAddFile = { pickFile.launch(OpenPersistableDocument.AUDIO_MIME_TYPES) },
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
@@ -132,6 +143,37 @@ fun LibraryScreen(
     }
 }
 
+/**
+ * The add control offers both book types rather than assuming one. Dismissing it opens no picker
+ * and changes nothing.
+ */
+@Composable
+private fun AddMenu(enabled: Boolean, onAddFolder: () -> Unit, onAddFile: () -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column {
+        TextButton(onClick = { expanded = true }, enabled = enabled) {
+            Text(stringResource(R.string.library_add))
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.library_add_folder)) },
+                onClick = {
+                    expanded = false
+                    onAddFolder()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.library_add_file)) },
+                onClick = {
+                    expanded = false
+                    onAddFile()
+                },
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun BookRow(
@@ -140,31 +182,36 @@ private fun BookRow(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = book.title,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        Text(
-            text = if (isUnavailable) {
-                stringResource(R.string.library_unavailable)
-            } else {
-                pluralStringResource(R.plurals.library_chapter_count, book.chapterCount, book.chapterCount)
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (isUnavailable) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            modifier = Modifier.padding(top = 4.dp),
-        )
+        BookCover(artworkPath = book.artworkPath, size = LibraryCoverSize)
+
+        Column(modifier = Modifier.padding(start = 16.dp)) {
+            Text(
+                text = book.title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = if (isUnavailable) {
+                    stringResource(R.string.library_unavailable)
+                } else {
+                    pluralStringResource(R.plurals.library_chapter_count, book.chapterCount, book.chapterCount)
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (isUnavailable) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
     }
 }
 
