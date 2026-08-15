@@ -9,6 +9,12 @@ The project skeleton only. The app builds, installs, and opens to an empty Libra
 There is no playback, file picking, or persistence yet — those arrive in later changes tracked
 under `openspec/changes/`.
 
+## Trying it out
+
+`samples/` holds one small public-domain LibriVox `.m4b` with real chapter marks, so you can
+test the app without supplying your own audiobook. See [`samples/README.md`](samples/README.md)
+for how to push it to a device.
+
 ## Requirements
 
 | Component | Version | Location on this machine |
