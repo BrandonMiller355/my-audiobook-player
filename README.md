@@ -9,6 +9,34 @@ The project skeleton only. The app builds, installs, and opens to an empty Libra
 There is no playback, file picking, or persistence yet — those arrive in later changes tracked
 under `openspec/changes/`.
 
+## The bundled sample audiobook
+
+The APK carries one public-domain audiobook, and the library seeds itself with it the first time
+it opens. Install the APK and there is a playable book already there — no file to supply first.
+
+| | |
+|---|---|
+| Title | *The Mystery of Black Rock Creek* |
+| Authors | Jerome K. Jerome, Eden Phillpotts, E. F. Benson, F. Frankfort Moore, Barry Pain |
+| Readers | Various (LibriVox volunteers) |
+| Source | https://archive.org/details/mysteryblackrockcreek_2407_librivox |
+| License | Public domain — LibriVox recordings are released into the public domain |
+| In the repo | `app/src/main/assets/sample/the-mystery-of-black-rock-creek.m4b` |
+| Size | 19.2 MB (the APK is that much larger; the device holds a second copy once seeded) |
+| Duration | 41m 44s, AAC 44.1 kHz |
+| Chapters | 5, real QuickTime chapter marks |
+| Cover art | None embedded, so it shows the placeholder |
+
+It is worth keeping for testing beyond its role as a demo: every `.m4b` in the owner's own library
+parses as a single book-length chapter, so this is the only real file the chaptered path runs
+against. `BundledSampleTest` asserts it still parses as five ascending chapters, which is what will
+fail if the asset is ever replaced or re-encoded.
+
+**Removing it is permanent.** It is removed like any other book — long-press, confirm — and that
+deletes the app's copy and reclaims the space. It is never seeded again, short of clearing app
+data. Removing it deletes only the app's own copy; that is the sole file removal ever deletes, and
+it is guarded by directory containment rather than by name (`SampleLibrary`).
+
 ## Requirements
 
 | Component | Version | Location on this machine |
