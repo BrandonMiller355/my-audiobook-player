@@ -37,13 +37,14 @@
 
 ## 5. Manual verification (PRD §25)
 
-**Not started — no device or emulator was available in the session that implemented this** (`adb
-devices` empty, no AVD configured). Everything above is verified by build and unit test only; the
-seeded book has never been seen on screen. This section is the gate before archiving.
+**Done by the owner on their own device.** No device or emulator was available in the session that
+implemented this change, so everything in sections 1–4 was verified by build and unit test only.
+The checks below were run separately by the owner and reported passing; this session did not
+observe them.
 
-- [ ] 5.1 Install onto a device with no app data: the sample appears in the library on first open, with 5 chapters and the placeholder cover
-- [ ] 5.2 Play it — chapter navigation, the scrubber, speed, and the media notification all work; it is the first real chaptered `.m4b` any of these has been exercised against
-- [ ] 5.3 Force-stop and reopen: the book is still listed, is not duplicated, and resumes where it was left
-- [ ] 5.4 Remove it, reopen the app, and confirm it does not come back
-- [ ] 5.5 Confirm the copied file is gone from `filesDir/sample/` after removal
-- [ ] 5.6 Add a real book of the owner's and remove it; confirm the source file still exists on disk
+- [x] 5.1 Install onto a device with no app data: the sample appears in the library on first open, with 5 chapters and the placeholder cover
+- [x] 5.2 Play it — chapter navigation, the scrubber, speed, and the media notification all work; it is the first real chaptered `.m4b` any of these has been exercised against
+- [x] 5.3 Force-stop and reopen: the book is still listed, is not duplicated, and resumes where it was left
+- [x] 5.4 Remove it, reopen the app, and confirm it does not come back
+- [x] 5.5 Confirm the copied file is gone from `filesDir/sample/` after removal
+- [x] 5.6 Add a real book of the owner's and remove it; confirm the source file still exists on disk
