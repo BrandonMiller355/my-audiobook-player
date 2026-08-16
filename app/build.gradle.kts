@@ -39,6 +39,13 @@ android {
         compose = true
     }
 
+    // The bundled sample audiobook is AAC inside an MP4 container — already compressed. Deflating
+    // it at build time costs time and saves nothing, and storing it uncompressed keeps the copy
+    // out of the APK a straight read (`bundle-sample-audiobook` task 1.2).
+    androidResources {
+        noCompress += "m4b"
+    }
+
     // Robolectric needs a real merged manifest to construct a working Context/Application.
     testOptions {
         unitTests.isIncludeAndroidResources = true
