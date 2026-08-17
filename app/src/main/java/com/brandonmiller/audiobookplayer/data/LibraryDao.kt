@@ -49,6 +49,14 @@ interface LibraryDao {
     @Query("SELECT * FROM audiobooks WHERE id = :audiobookId")
     suspend fun findBook(audiobookId: Long): AudiobookEntity?
 
+    /**
+     * Observed rather than read once, so the Player's ebook icon is right after the Reader unlinks.
+     * Both screens outlive each other on the back stack, and a one-shot read leaves the icon
+     * claiming a link that no longer exists until the Player is rebuilt.
+     */
+    @Query("SELECT ebookUri FROM audiobooks WHERE id = :audiobookId")
+    fun observeEbookUri(audiobookId: Long): Flow<String?>
+
     @Query("SELECT * FROM chapters WHERE audiobookId = :audiobookId ORDER BY chapterIndex ASC")
     suspend fun chaptersFor(audiobookId: Long): List<ChapterEntity>
 

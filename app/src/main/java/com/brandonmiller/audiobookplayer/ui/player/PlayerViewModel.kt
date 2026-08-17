@@ -2,7 +2,9 @@ package com.brandonmiller.audiobookplayer.ui.player
 
 import android.content.ComponentName
 import android.content.Context
+import android.net.Uri
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -19,6 +21,10 @@ import com.brandonmiller.audiobookplayer.data.ChapterEntity
 import com.brandonmiller.audiobookplayer.data.LibraryDao
 import com.brandonmiller.audiobookplayer.data.SOURCE_TYPE_M4B
 import com.brandonmiller.audiobookplayer.data.SpeedPreferences
+import com.brandonmiller.audiobookplayer.R
+import com.brandonmiller.audiobookplayer.ebook.EbookParseResult
+import com.brandonmiller.audiobookplayer.ebook.EbookSource
+import com.brandonmiller.audiobookplayer.ui.library.UriPermissionHolder
 import com.brandonmiller.audiobookplayer.playback.BookTimeline
 import com.brandonmiller.audiobookplayer.playback.PlaybackService
 import com.brandonmiller.audiobookplayer.playback.chapterTimeline
@@ -58,6 +64,10 @@ data class PlayerUiState(
      * chapter's total length. Null when the chapter's end is not yet known.
      */
     val chapterRemainingMs: Long? = null,
+    /** Whether this book has an ebook linked, which is what the cover icon's two forms show. */
+    val hasEbook: Boolean = false,
+    /** Set once after a successful link, so picking an ebook goes straight on into reading it. */
+    val openReaderRequested: Boolean = false,
     val errorMessage: String? = null,
 )
 
@@ -76,6 +86,8 @@ class PlayerViewModel(
     private val appContext: Context,
     private val dao: LibraryDao,
     private val speedPreferences: SpeedPreferences,
+    private val ebooks: EbookSource,
+    private val permissions: UriPermissionHolder,
     private val bookId: Long,
 ) : ViewModel() {
 
@@ -124,6 +136,61 @@ class PlayerViewModel(
 
     init {
         connect()
+        observeEbookLink()
+    }
+
+    /**
+     * Keeps the cover icon honest across the Reader's lifetime. Both screens sit on the back stack
+     * together, so a link removed in the Reader has to reach a Player that was built before it.
+     */
+    private fun observeEbookLink() {
+        viewModelScope.launch {
+            dao.observeEbookUri(bookId).collect { uri ->
+                _state.update { it.copy(hasEbook = uri != null) }
+            }
+        }
+    }
+
+    /**
+     * Links a picked EPUB, or explains why it cannot be.
+     *
+     * The file is parsed rather than sniffed, because the three refusals the user can act on —
+     * not an EPUB, protected, unreadable — are exactly what parsing distinguishes, and a link that
+     * only fails later when the Reader opens is a link that looks like it worked.
+     */
+    fun linkEbook(uri: Uri) {
+        viewModelScope.launch {
+            val previous = withContext(Dispatchers.IO) { dao.findBook(bookId)?.ebookUri }
+
+            val result = withContext(Dispatchers.IO) {
+                permissions.persist(uri)
+                ebooks.read(uri)
+            }
+
+            if (result !is EbookParseResult.Parsed) {
+                // Give the grant straight back: holding one for a file the app has refused to use
+                // would leave the user's permission list quietly wrong.
+                withContext(Dispatchers.IO) { permissions.release(uri) }
+                _state.update { it.copy(errorMessage = appContext.getString(messageFor(result))) }
+                return@launch
+            }
+
+            withContext(Dispatchers.IO) {
+                dao.linkEbook(bookId, uri.toString())
+                previous?.takeIf { it != uri.toString() }?.let { permissions.release(it.toUri()) }
+            }
+            _state.update { it.copy(hasEbook = true, openReaderRequested = true) }
+        }
+    }
+
+    private fun messageFor(result: EbookParseResult): Int = when (result) {
+        is EbookParseResult.Encrypted -> R.string.ebook_encrypted
+        is EbookParseResult.NotAnEpub -> R.string.ebook_not_an_epub
+        else -> R.string.ebook_unreadable
+    }
+
+    fun consumeReaderRequest() {
+        _state.update { it.copy(openReaderRequested = false) }
     }
 
     private fun connect() {
@@ -153,6 +220,7 @@ class PlayerViewModel(
                     bookTitle = book.title,
                     chapterCount = chapters.size,
                     artworkPath = book.artworkPath,
+                    hasEbook = book.ebookUri != null,
                 )
             }
 
@@ -327,6 +395,8 @@ class PlayerViewModel(
                         appContext = appContext,
                         dao = AudiobookDatabase.get(appContext).libraryDao(),
                         speedPreferences = SpeedPreferences(appContext),
+                        ebooks = EbookSource(appContext.contentResolver),
+                        permissions = UriPermissionHolder(appContext),
                         bookId = bookId.toLongOrNull() ?: -1L,
                     ) as T
             }

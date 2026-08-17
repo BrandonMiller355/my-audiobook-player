@@ -28,5 +28,17 @@ class OpenPersistableDocument : ActivityResultContracts.OpenDocument() {
 
     companion object {
         val AUDIO_MIME_TYPES = arrayOf("audio/*", "application/octet-stream")
+
+        /**
+         * Loose for the same reason [AUDIO_MIME_TYPES] is: an `.epub` is reported as
+         * `application/epub+zip`, `application/zip`, or `application/octet-stream` depending on the
+         * provider, so nothing is hidden here and the file's own contents decide afterwards
+         * (`add-ebook-companion` design D13).
+         */
+        val EBOOK_MIME_TYPES = arrayOf(
+            "application/epub+zip",
+            "application/zip",
+            "application/octet-stream",
+        )
     }
 }

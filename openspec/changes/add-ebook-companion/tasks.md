@@ -59,85 +59,91 @@ so it is testable with plain JUnit. No new dependency (proposal).
 
 ## 4. Link an ebook from the Player
 
-- [ ] 4.1 Add an EPUB MIME array to `OpenPersistableDocument` alongside `AUDIO_MIME_TYPES`, loose
+- [x] 4.1 Add an EPUB MIME array to `OpenPersistableDocument` alongside `AUDIO_MIME_TYPES`, loose
       for the same reason (D13), and note the reason in the existing KDoc
-- [ ] 4.2 Take the persistable read grant on pick, reusing the pattern in `LibraryViewModel`
-- [ ] 4.3 Validate the picked file by reading it — a ZIP whose `mimetype` entry says
+- [x] 4.2 Take the persistable read grant on pick, reusing the pattern in `LibraryViewModel`
+- [x] 4.3 Validate the picked file by reading it — a ZIP whose `mimetype` entry says
       `application/epub+zip` — and reject non-EPUB, encrypted, and corrupt files with distinct
       readable messages
-- [ ] 4.4 Draw the ebook icon in `ui/Icons.kt` in both states, on the same 24 grid and 2-unit stroke
+- [x] 4.4 Draw the ebook icon in `ui/Icons.kt` in both states, on the same 24 grid and 2-unit stroke
       as the existing set (D15)
-- [ ] 4.5 Place it as a 44dp disc top-right on the Player's cover, mirroring the back button's
+- [x] 4.5 Place it as a 44dp disc top-right on the Player's cover, mirroring the back button's
       treatment on the same scrim, and wire the unlinked state to the picker and the linked state to
       the reader route
-- [ ] 4.6 Release the old grant when an ebook is replaced or unlinked, and clear the stored reading
+- [x] 4.6 Release the old grant when an ebook is replaced or unlinked, and clear the stored reading
       position on replace
-- [ ] 4.7 Add a linked flag to `LibraryBook` and the library query, and show the linked-state glyph
+- [x] 4.7 Add a linked flag to `LibraryBook` and the library query, and show the linked-state glyph
       on rows that have one — indicator only, the row still opens the Player (D16)
 
 ## 5. The reader screen
 
-- [ ] 5.1 Add `Routes.READER = "reader/{bookId}"` to `AudiobooksApp.kt` (D5)
-- [ ] 5.2 Create `ReaderViewModel`: load the book row, parse the EPUB off the main thread, expose
+- [x] 5.1 Add `Routes.READER = "reader/{bookId}"` to `AudiobooksApp.kt` (D5)
+- [x] 5.2 Create `ReaderViewModel`: load the book row, parse the EPUB off the main thread, expose
       loading / ready / failed states, and hold the block list and navigation entries
-- [ ] 5.3 Create `ReaderScreen` rendering the block list in one `LazyColumn`, building each block's
+- [x] 5.3 Create `ReaderScreen` rendering the block list in one `LazyColumn`, building each block's
       `AnnotatedString` per item so only visible blocks are materialized (D11)
-- [ ] 5.4 Style the reader: pure black, white text, reader-local constants rather than additions to
+- [x] 5.4 Style the reader: pure black, white text, reader-local constants rather than additions to
       `AudiobookColors`, with a comment recording why (D6)
-- [ ] 5.5 Set status-bar and navigation-bar appearance on entry and restore on exit, following the
+- [x] 5.5 Set status-bar and navigation-bar appearance on entry and restore on exit, following the
       `DisposableEffect` shape of `LightStatusBarIcons` in `PlayerScreen.kt`
-- [ ] 5.6 Hold `FLAG_KEEP_SCREEN_ON` for the reader's lifetime and clear it on exit (D14)
-- [ ] 5.7 Restore the reading position on open: resolve `(spineIndex, charOffset)` to a block index
+- [x] 5.6 Hold `FLAG_KEEP_SCREEN_ON` for the reader's lifetime and clear it on exit (D14)
+- [x] 5.7 Restore the reading position on open: resolve `(spineIndex, charOffset)` to a block index
       and `scrollToItem` to it
-- [ ] 5.8 Save the reading position when scrolling settles, not per frame
-- [ ] 5.9 Render the unavailable states — file gone, grant lost, parse failed — as a readable
+- [x] 5.8 Save the reading position when scrolling settles, not per frame
+- [x] 5.9 Render the unavailable states — file gone, grant lost, parse failed — as a readable
       message with an offer to link a different ebook
 
 ## 6. Reader controls
 
-- [ ] 6.1 Implement tap-to-reveal: a center-band tap toggles the chrome, it auto-hides after a few
+- [x] 6.1 Implement tap-to-reveal: a center-band tap toggles the chrome, it auto-hides after a few
       seconds, and it is visible on entry so the gesture is discoverable (D7)
-- [ ] 6.2 Make sure a scroll is never interpreted as a tap
-- [ ] 6.3 Add flip-back to the Player, and confirm hardware back does the same rather than returning
+- [x] 6.2 Make sure a scroll is never interpreted as a tap
+- [x] 6.3 Add flip-back to the Player, and confirm hardware back does the same rather than returning
       to the Library
-- [ ] 6.4 Add the table of contents as a sheet, mirroring `ChaptersSheet.kt`, with entries jumping
+- [x] 6.4 Add the table of contents as a sheet, mirroring `ChaptersSheet.kt`, with entries jumping
       via `scrollToItem` and indented by their depth so parts and their chapters stay
       distinguishable; show a plain "no table of contents" state when the ebook has no navigation
       document
-- [ ] 6.5 Add play/pause, connected to the same `MediaController` the Player uses, reflecting state
+- [x] 6.5 Add play/pause, connected to the same `MediaController` the Player uses, reflecting state
       changed from the notification or a Bluetooth control (D8 — flag to the owner that this control
       was not explicitly requested and is cheap to cut)
-- [ ] 6.6 Add change-ebook and unlink to the chrome (D15)
-- [ ] 6.7 Add content descriptions to every control, matching the convention in `ui/Icons.kt`
+- [x] 6.6 Add change-ebook and unlink to the chrome (D15)
+- [x] 6.7 Add content descriptions to every control, matching the convention in `ui/Icons.kt`
 
 ## 7. Reading preferences
 
-- [ ] 7.1 Add a reading-preferences DataStore beside `SpeedPreferences.kt` holding text size, line
+- [x] 7.1 Add a reading-preferences DataStore beside `SpeedPreferences.kt` holding text size, line
       spacing, typeface, and brightness, app-wide rather than per book (D10)
-- [ ] 7.2 Apply text size, line spacing, and typeface to the rendered blocks, with bounds that keep
+- [x] 7.2 Apply text size, line spacing, and typeface to the rendered blocks, with bounds that keep
       both extremes readable
-- [ ] 7.3 Set `WindowManager.LayoutParams.screenBrightness` on the reader's window and restore
+- [x] 7.3 Set `WindowManager.LayoutParams.screenBrightness` on the reader's window and restore
       `BRIGHTNESS_OVERRIDE_NONE` on exit (D9)
-- [ ] 7.4 Add the settings controls to the revealed chrome
-- [ ] 7.5 Confirm the reading position holds across a text size, line spacing, and typeface change —
+- [x] 7.4 Add the settings controls to the revealed chrome
+- [x] 7.5 Confirm the reading position holds across a text size, line spacing, and typeface change —
       the reason D3 chose a character offset over a pixel one
 
 ## 8. Verify
 
-- [ ] 8.1 Run the unit tests and `assembleDebug`, and confirm `verifyDebugPermissions` still passes
-- [ ] 8.2 On the emulator or device: link an ebook, read, leave, reopen, and confirm the position
+- [x] 8.1 Run the unit tests and `assembleDebug`, and confirm `verifyDebugPermissions` still passes
+- [x] 8.2 On the emulator or device: link an ebook, read, leave, reopen, and confirm the position
       returns
-- [ ] 8.3 Confirm audio keeps playing across the flip in both directions, and that entering the
+- [x] 8.3 Confirm audio keeps playing across the flip in both directions, and that entering the
       reader while paused does not start it
-- [ ] 8.4 Confirm the reading position and the playback position move independently
-- [ ] 8.5 Force-stop and reopen: link, position, and reading preferences all survive
-- [ ] 8.6 Exercise the failure paths: delete the linked EPUB, pick a non-EPUB, pick a DRM-protected
+- [x] 8.4 Confirm the reading position and the playback position move independently
+- [x] 8.5 Force-stop and reopen: link, position, and reading preferences all survive
+- [x] 8.6 Exercise the failure paths: delete the linked EPUB, pick a non-EPUB, pick a DRM-protected
       EPUB, and confirm each gives a readable message and playback is unaffected
-- [ ] 8.7 Check the reader in both light and dark system themes, and confirm the system bars are
+      — deleted file and non-EPUB verified on device. **The DRM case was not: no DRM-protected
+      EPUB was available to test with.** It is covered by the `an encrypted epub is refused`
+      unit test, and shares the message path the non-EPUB case exercised end to end.
+- [x] 8.7 Check the reader in both light and dark system themes, and confirm the system bars are
       restored on the way out
-- [ ] 8.8 Open `The Hero of Ages.epub` on the device: confirm the chapters read in forward order,
+- [x] 8.8 Open `The Hero of Ages.epub` on the device: confirm the chapters read in forward order,
       the nested table of contents jumps correctly, paragraphs are not broken at the source's hard
       wraps, and the back-matter table degrades to readable text rather than a mess
-- [ ] 8.9 Confirm the library row indicator appears for the linked book and not for the others
-- [ ] 8.10 Update the README's limitations section to cover the EPUB subset and the DRM refusal
-- [ ] 8.11 Sweep the change's prose for British spellings before committing
+      — forward order, nested contents, and hard wraps verified on device. **The back-matter table
+      was checked by unit test rather than by scrolling to it in the app**; the parser test asserts
+      one block per row with cells separated.
+- [x] 8.9 Confirm the library row indicator appears for the linked book and not for the others
+- [x] 8.10 Update the README's limitations section to cover the EPUB subset and the DRM refusal
+- [x] 8.11 Sweep the change's prose for British spellings before committing
