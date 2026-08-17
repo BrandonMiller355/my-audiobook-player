@@ -1,13 +1,19 @@
 package com.brandonmiller.audiobookplayer.ui.library
 
+import android.content.ComponentName
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
 import com.brandonmiller.audiobookplayer.data.AudiobookDatabase
 import com.brandonmiller.audiobookplayer.data.AudiobookEntity
 import com.brandonmiller.audiobookplayer.data.ChapterEntity
@@ -15,6 +21,7 @@ import com.brandonmiller.audiobookplayer.data.LibraryBook
 import com.brandonmiller.audiobookplayer.data.LibraryDao
 import com.brandonmiller.audiobookplayer.data.SOURCE_TYPE_FOLDER
 import com.brandonmiller.audiobookplayer.data.SOURCE_TYPE_M4B
+import com.brandonmiller.audiobookplayer.data.SpeedPreferences
 import com.brandonmiller.audiobookplayer.library.CoverStore
 import com.brandonmiller.audiobookplayer.library.FolderScanner
 import com.brandonmiller.audiobookplayer.library.M4B_EXTENSION
@@ -22,11 +29,16 @@ import com.brandonmiller.audiobookplayer.library.M4bReadResult
 import com.brandonmiller.audiobookplayer.library.M4bReader
 import com.brandonmiller.audiobookplayer.library.SampleLibrary
 import com.brandonmiller.audiobookplayer.library.ScanResult
+import com.brandonmiller.audiobookplayer.playback.PlaybackService
+import com.brandonmiller.audiobookplayer.playback.loadBook
+import com.brandonmiller.audiobookplayer.playback.mediaIdBelongsTo
+import com.brandonmiller.audiobookplayer.playback.mediaIdBookId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -35,16 +47,52 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 class LibraryViewModel(
+    private val appContext: Context,
     private val dao: LibraryDao,
     private val scanner: FolderScanner,
     private val m4bReader: M4bReader,
     private val coverStore: CoverStore,
     private val permissions: UriPermissionHolder,
+    private val speedPreferences: SpeedPreferences,
     private val sample: SampleLibrary,
 ) : ViewModel() {
 
     val books: StateFlow<List<LibraryBook>> = dao.observeLibrary()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * The book the resume card offers: the most recently played of those with a saved position.
+     *
+     * A book with no total duration is still a valid target — it is resumable, it just cannot state
+     * how much is left — so the filter is on having been played, not on being fully measured.
+     */
+    val resumeBook: StateFlow<LibraryBook?> = books
+        .map { list -> list.filter { it.positionMs != null }.maxByOrNull { it.lastPlayedAt ?: 0 } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** The book actually playing right now, or null when nothing is. */
+    private val _playingBookId = MutableStateFlow<Long?>(null)
+
+    /**
+     * Whether the resume card's own book is the one currently playing.
+     *
+     * Scoped to that book deliberately: the card's control must not show as playing because some
+     * other book is, which is exactly what a bare `isPlaying` would do after the user starts one
+     * book and the card offers another.
+     *
+     * Combined rather than computed once, because either side moves independently — the session
+     * starts and stops, and the library re-emits a different most-recently-played book.
+     */
+    val resumeIsPlaying: StateFlow<Boolean> = combine(resumeBook, _playingBookId) { book, playing ->
+        book != null && book.id == playing
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    private var controller: MediaController? = null
+
+    private val playbackListener = object : Player.Listener {
+        override fun onIsPlayingChanged(isPlaying: Boolean) = readPlaybackState()
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = readPlaybackState()
+    }
 
     /**
      * Books whose source permission is no longer held — the folder or file was moved, deleted, or
@@ -70,6 +118,68 @@ class LibraryViewModel(
     // from an init block above these declarations can begin running before `_busy` exists.
     init {
         seedSampleOnce()
+        connect()
+    }
+
+    /**
+     * A second connection to the one session, so the resume card's control can start a book without
+     * navigating to the Player (design D5). The service keeps playing regardless of this connection
+     * — it is the same arrangement the Player has, not a second player.
+     */
+    private fun connect() {
+        val token = SessionToken(appContext, ComponentName(appContext, PlaybackService::class.java))
+        val future = MediaController.Builder(appContext, token).buildAsync()
+        future.addListener(
+            {
+                val connected = runCatching { future.get() }.getOrNull() ?: return@addListener
+                controller = connected
+                connected.addListener(playbackListener)
+                readPlaybackState()
+            },
+            ContextCompat.getMainExecutor(appContext),
+        )
+    }
+
+    private fun readPlaybackState() {
+        val player = controller
+        _playingBookId.value = if (player != null && player.isPlaying) {
+            mediaIdBookId(player.currentMediaItem?.mediaId)
+        } else {
+            null
+        }
+    }
+
+    /**
+     * The resume card's play control. Toggles when the session is already holding this book;
+     * otherwise loads it at its saved position and starts it.
+     *
+     * The load goes through the same [loadBook] the Player uses, rather than a copy of it — two
+     * versions of "how to put a book into the session" is how the two screens end up disagreeing
+     * about whether opening a book should start it (design D5).
+     */
+    fun toggleResumePlayback() {
+        val player = controller ?: return
+        val book = resumeBook.value ?: return
+
+        viewModelScope.launch {
+            if (mediaIdBelongsTo(player.currentMediaItem?.mediaId, book.id)) {
+                if (player.isPlaying) player.pause() else player.play()
+            } else {
+                val entity = withContext(Dispatchers.IO) { dao.findBook(book.id) } ?: return@launch
+                val chapters = withContext(Dispatchers.IO) { dao.chaptersFor(book.id) }
+                player.loadBook(entity, chapters, speedPreferences.lastUsedSpeed())
+                player.play()
+            }
+            readPlaybackState()
+        }
+    }
+
+    override fun onCleared() {
+        controller?.removeListener(playbackListener)
+        // Releases this connection only. The service keeps playing, which is the point.
+        controller?.release()
+        controller = null
+        super.onCleared()
     }
 
     /**
@@ -263,11 +373,13 @@ class LibraryViewModel(
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T =
                     LibraryViewModel(
+                        appContext = appContext,
                         dao = AudiobookDatabase.get(appContext).libraryDao(),
                         scanner = FolderScanner(appContext.contentResolver),
                         m4bReader = M4bReader(appContext),
                         coverStore = CoverStore(appContext.filesDir),
                         permissions = UriPermissionHolder(appContext),
+                        speedPreferences = SpeedPreferences(appContext),
                         sample = SampleLibrary(appContext),
                     ) as T
             }

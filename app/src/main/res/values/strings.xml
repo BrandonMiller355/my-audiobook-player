@@ -1,33 +1,63 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Audiobooks</string>
-    <string name="library_title">Audiobooks</string>
-    <string name="library_add">Add</string>
+
+    <!-- Library -->
+    <string name="library_title">Library</string>
+    <string name="library_add">Add a book</string>
     <string name="library_add_folder">Add a folder</string>
     <string name="library_add_file">Add a single file</string>
-    <string name="library_empty_title">No audiobooks yet</string>
-    <string name="library_empty_body">Tap Add, then choose the folder that holds a book\'s audio files or a single .m4b file.</string>
-    <string name="library_unavailable">Source unavailable</string>
     <string name="library_cover">Cover art</string>
-    <plurals name="library_chapter_count">
-        <item quantity="one">%d chapter</item>
-        <item quantity="other">%d chapters</item>
-    </plurals>
-    <string name="library_remove_title">Remove from library?</string>
-    <string name="library_remove_body">“%1$s” will be removed from your library. The audio files on your device are not deleted.</string>
-    <string name="library_remove_confirm">Remove</string>
-    <string name="library_remove_cancel">Cancel</string>
+
+    <!-- The resume card. Set in caps because the style that renders it is a tracked-out
+         uppercase label; there is no sentence-case form of it anywhere. -->
+    <string name="library_resume_label">KEEP LISTENING</string>
+    <string name="library_resume_remaining">%1$s left</string>
+
+    <!-- A row's second line: chapter count, and total duration once it is known. -->
+    <string name="library_row_meta">%1$d ch · %2$s</string>
+    <string name="library_row_meta_no_duration">%1$d ch</string>
+    <string name="library_unavailable">Source unavailable — tap to relink</string>
+
+    <string name="library_empty_title">Nothing here yet.</string>
+    <string name="library_empty_body">Point the app at a folder of audio files or a single .m4b, and it appears here with its chapters.</string>
+    <string name="library_empty_folder">Choose a folder</string>
+    <string name="library_empty_file">Choose a single .m4b</string>
+    <string name="library_empty_privacy">STAYS ON THIS DEVICE · NO ACCOUNT</string>
+
+    <string name="library_remove_title">Remove %1$s?</string>
+    <string name="library_remove_body">Removes the book from your library. Your files stay exactly where they are.</string>
+    <string name="library_remove_confirm">Remove from library</string>
+    <string name="library_remove_cancel">Keep it</string>
+
+    <!-- Player -->
     <string name="player_back">Back to library</string>
     <string name="player_unknown_book">Book not found</string>
     <string name="player_connecting">Connecting…</string>
     <string name="player_play">Play</string>
     <string name="player_pause">Pause</string>
-    <string name="player_chapter_of">Chapter %1$d of %2$d</string>
-    <string name="player_seek_back_1m">-1m</string>
-    <string name="player_seek_back_10s">-10s</string>
-    <string name="player_seek_forward_10s">+10s</string>
-    <string name="player_seek_forward_1m">+1m</string>
-    <string name="player_previous_chapter">Previous Chapter</string>
-    <string name="player_next_chapter">Next Chapter</string>
-    <string name="player_speed_label">Speed: %1$sx</string>
+
+    <!-- Uppercased where it is drawn, so the chapter title keeps its own casing in the string. -->
+    <string name="player_chapter_line">CH %1$d/%2$d — %3$s</string>
+
+    <string name="player_seek_back_1m">Back one minute</string>
+    <string name="player_seek_back_10s">Back ten seconds</string>
+    <string name="player_seek_forward_10s">Forward ten seconds</string>
+    <string name="player_seek_forward_1m">Forward one minute</string>
+
+    <!-- Captions under the seek controls. Labels, not tap targets — the descriptions above are
+         what assistive technology reads. -->
+    <string name="player_caption_1m">1M</string>
+    <string name="player_caption_10s">10S</string>
+
+    <string name="player_scrubber">Position in book</string>
+    <string name="player_chapters">Chapters</string>
+    <string name="player_chapter_position">%1$d/%2$d</string>
+    <string name="player_speed_caption">SPEED</string>
+    <string name="player_speed_value">%1$s×</string>
+
+    <!-- Chapters sheet -->
+    <string name="player_sheet_subtitle">%1$s · %2$d TOTAL</string>
+    <string name="player_sheet_collapse">Close chapters</string>
+    <string name="player_sheet_speed">Playback speed %1$s</string>
 </resources>

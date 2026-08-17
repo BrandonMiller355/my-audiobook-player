@@ -76,11 +76,46 @@ data class ChapterEntity(
     val endPositionMs: Long? = null,
 )
 
-/** A library row: the book plus the one derived figure the list shows. */
+/** A library row: the book plus the derived figures the list and the resume card show. */
 data class LibraryBook(
     val id: Long,
     val title: String,
     val sourceUri: String,
     val chapterCount: Int,
     val artworkPath: String? = null,
-)
+    /**
+     * Total length, or null when it is not yet known — which is every folder book that has not
+     * been opened since it was added, because a folder book's chapter durations are read on its
+     * first open rather than at add time (`redesign-player-and-library` design D3).
+     *
+     * Null rather than a partial sum on purpose. A total assembled from the chapters that happen
+     * to have resolved looks authoritative and is wrong; absent is a figure the UI knows not to
+     * draw.
+     */
+    val durationMs: Long? = null,
+    /**
+     * Saved position across the whole book, or null when the book has never been played. Derived
+     * from the stored player coordinates rather than stored separately (design D4).
+     */
+    val positionMs: Long? = null,
+    /** When this book was last played, or null if it never has been — the resume card's tiebreak. */
+    val lastPlayedAt: Long? = null,
+) {
+    /**
+     * How far through the book the saved position is, or null when either figure is missing. Both
+     * are needed: a position without a total says nothing about progress.
+     */
+    val progress: Float?
+        get() {
+            val position = positionMs ?: return null
+            val duration = durationMs?.takeIf { it > 0 } ?: return null
+            return (position.toFloat() / duration).coerceIn(0f, 1f)
+        }
+
+    /** What is left to listen to, or null when the total is not known. */
+    val remainingMs: Long?
+        get() {
+            val duration = durationMs ?: return null
+            return (duration - (positionMs ?: 0)).coerceAtLeast(0)
+        }
+}

@@ -24,6 +24,9 @@ data class Location(val chapterIndex: Int, val offsetMs: Long)
 /** Where playback should move to, in player terms — apply with `player.seekTo(mediaItemIndex, positionMs)`. */
 data class PlayerTarget(val mediaItemIndex: Int, val positionMs: Long)
 
+/** One chapter's extent within the book, for a chapter list. [durationMs] is null when unknown. */
+data class ChapterSpan(val chapterIndex: Int, val absoluteStartMs: Long, val durationMs: Long?)
+
 /**
  * Maps between Media3 player coordinates and book-chapter coordinates, for either book shape.
  *
@@ -99,6 +102,30 @@ class BookTimeline(private val bounds: List<ChapterBounds>) {
 
     /** Best-effort total book duration — see [absolutePosition]'s note on unresolved chapters. */
     fun totalDurationMs(): Long = bounds.sumOf { chapterDurationOrZero(it) }
+
+    /**
+     * Every chapter's place in the book, in book coordinates rather than player ones — what a
+     * chapter list needs in order to show durations and to seek to a chapter by name.
+     *
+     * [ChapterSpan.durationMs] is null for a chapter whose end is not yet known, which the caller
+     * must render as "unknown" rather than as zero. [ChapterSpan.absoluteStartMs] treats such a
+     * chapter as contributing nothing, the same convention [absolutePosition] uses, so the two
+     * agree about where a chapter begins even while durations are still resolving.
+     */
+    fun chapterSpans(): List<ChapterSpan> {
+        var start = 0L
+        return bounds.map { chapter ->
+            val duration = chapter.endInItemMs?.let { it - chapter.startInItemMs }
+            ChapterSpan(chapter.chapterIndex, start, duration).also { start += duration ?: 0 }
+        }
+    }
+
+    /** How much of [location]'s own chapter is left, or null when that chapter's end is unknown. */
+    fun remainingInChapter(location: Location): Long? {
+        val chapter = boundsFor(location.chapterIndex)
+        val duration = chapter.endInItemMs?.let { it - chapter.startInItemMs } ?: return null
+        return (duration - location.offsetMs).coerceAtLeast(0)
+    }
 
     /** Maps an absolute book-wide position back to player coordinates — the scrubber's seek target. */
     fun targetForAbsolute(absoluteMs: Long): PlayerTarget {
