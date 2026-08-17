@@ -139,6 +139,38 @@ One thing already known from probing real files: an `.m4b` can carry a QuickTime
 that contains a single entry spanning the whole book — structurally "chaptered" but carrying no
 usable chapter marks. Such files are treated as unchaptered (PRD §7.4).
 
+## Ebook companion
+
+An audiobook can have one EPUB linked to it, read on a black reading page that the ebook icon on
+the Player's cover art flips to and back. The two positions — where you are listening and where you
+are reading — are independent; nothing tries to keep them in step. That is deliberate, and the
+reasoning is in `handoffs/2026-08-10-ebook-audio-readalong.md`.
+
+The EPUB is parsed in-app with no third-party dependency, which sets the limits below.
+
+**Format.** EPUB only. MOBI and AZW3 are not supported and are not planned — modern Kindle formats
+ship DRM-protected, and DRM is a PRD §3 non-goal. Convert with Calibre on the desktop.
+
+**DRM.** An EPUB carrying `META-INF/encryption.xml` is refused with a message saying so. No attempt
+is made to decrypt it.
+
+**What renders.** Paragraphs, headings, italic, bold, underline, block quotes, line breaks,
+horizontal rules, and ordered and unordered lists.
+
+**What does not.** Images, tables (the text of each row appears, but not as a grid), footnote
+popups, publisher CSS, right-to-left text, and vertical writing modes. Anything outside the list
+above contributes its text without its formatting, so words are never lost — only their appearance.
+
+**Performance.** The whole book is parsed each time the reader opens; there is no disk cache. A
+730 KB, 96-chapter novel parses in about 140 ms into roughly 7,600 paragraphs.
+
+**Reading position** is stored as a spine index and a character offset, not a scroll offset, so it
+survives changes to text size, line spacing, typeface, and orientation.
+
+> Note: the "Current status" section above predates most of the app and is out of date — playback,
+> the library, persistence, and this reader all exist. It is left alone here rather than rewritten
+> as a side effect of an unrelated change.
+
 ## Project layout
 
 ```

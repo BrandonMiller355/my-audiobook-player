@@ -160,6 +160,46 @@ fun DocumentIcon(size: Dp, color: Color, contentDescription: String?, modifier: 
     }
 }
 
+/**
+ * An open book. Outlined when nothing is linked, with its pages filled when something is.
+ *
+ * The two forms exist so the control says which of two different things a tap does — open a file
+ * picker, or open the reader — rather than leaving the user to find out (`add-ebook-companion`
+ * design D15). Filling the pages rather than adding a badge keeps both forms the same silhouette,
+ * so the difference reads at a glance without the icon changing size.
+ */
+@Composable
+fun BookIcon(
+    size: Dp,
+    color: Color,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    filled: Boolean = false,
+) {
+    IconCanvas(size, contentDescription, modifier) { unit, stroke ->
+        // Two leaves meeting at the spine, each a rectangle whose outer edge curves away.
+        fun leaf(outerX: Float) = Path().apply {
+            moveTo(12f * unit, 7f * unit)
+            lineTo(outerX * unit, 5f * unit)
+            lineTo(outerX * unit, 18f * unit)
+            lineTo(12f * unit, 20f * unit)
+            close()
+        }
+
+        for (outerX in listOf(3f, 21f)) {
+            val path = leaf(outerX)
+            if (filled) drawPath(path, color, alpha = FILLED_PAGE_ALPHA)
+            drawPath(path, color, style = stroke)
+        }
+
+        // The spine, drawn last so it sits over both leaves' inner edges.
+        drawLine(color, Offset(12f * unit, 7f * unit), Offset(12f * unit, 20f * unit), stroke.width, StrokeCap.Round)
+    }
+}
+
+/** Enough to read as filled against the cover scrim without swallowing the stroke that defines it. */
+private const val FILLED_PAGE_ALPHA = 0.45f
+
 /** A circled exclamation, marking a book whose source has gone. */
 @Composable
 fun WarningIcon(size: Dp, color: Color, contentDescription: String?, modifier: Modifier = Modifier) {

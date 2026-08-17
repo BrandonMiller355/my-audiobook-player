@@ -29,3 +29,17 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         db.execSQL("ALTER TABLE audiobooks ADD COLUMN artworkPath TEXT")
     }
 }
+
+/**
+ * Adds the linked ebook and the place the user stopped reading in it (`add-ebook-companion`
+ * design D4). Additive and non-destructive in the same shape as the two above, with no backfill:
+ * an existing book has no ebook, and all three null is exactly the state the Player's icon already
+ * has to render as "link one".
+ */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE audiobooks ADD COLUMN ebookUri TEXT")
+        db.execSQL("ALTER TABLE audiobooks ADD COLUMN ebookSpineIndex INTEGER")
+        db.execSQL("ALTER TABLE audiobooks ADD COLUMN ebookCharOffset INTEGER")
+    }
+}

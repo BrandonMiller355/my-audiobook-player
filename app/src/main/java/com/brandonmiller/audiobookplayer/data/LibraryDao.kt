@@ -36,7 +36,8 @@ interface LibraryDao {
                    FROM chapters p
                    WHERE p.audiobookId = a.id AND p.chapterIndex < a.lastMediaItemIndex
                ) + a.lastPositionMs AS positionMs,
-               a.lastPlayedAt AS lastPlayedAt
+               a.lastPlayedAt AS lastPlayedAt,
+               a.ebookUri IS NOT NULL AS hasEbook
         FROM audiobooks a
         LEFT JOIN chapters c ON c.audiobookId = a.id
         GROUP BY a.id
@@ -47,6 +48,14 @@ interface LibraryDao {
 
     @Query("SELECT * FROM audiobooks WHERE id = :audiobookId")
     suspend fun findBook(audiobookId: Long): AudiobookEntity?
+
+    /**
+     * Observed rather than read once, so the Player's ebook icon is right after the Reader unlinks.
+     * Both screens outlive each other on the back stack, and a one-shot read leaves the icon
+     * claiming a link that no longer exists until the Player is rebuilt.
+     */
+    @Query("SELECT ebookUri FROM audiobooks WHERE id = :audiobookId")
+    fun observeEbookUri(audiobookId: Long): Flow<String?>
 
     @Query("SELECT * FROM chapters WHERE audiobookId = :audiobookId ORDER BY chapterIndex ASC")
     suspend fun chaptersFor(audiobookId: Long): List<ChapterEntity>
@@ -104,4 +113,41 @@ interface LibraryDao {
      */
     @Query("UPDATE chapters SET endPositionMs = :endPositionMs WHERE id = :chapterId AND endPositionMs IS NULL")
     suspend fun updateChapterEnd(chapterId: Long, endPositionMs: Long)
+
+    // ---------------------------------------------------------------- ebook companion
+
+    /**
+     * Links an ebook, discarding whatever reading position was saved.
+     *
+     * Clearing is the point of doing both in one statement: a position is an offset into a
+     * particular book's text, so carrying it across to a different ebook would open the new one at
+     * an arbitrary place that looks deliberate.
+     */
+    @Query(
+        """
+        UPDATE audiobooks
+        SET ebookUri = :ebookUri, ebookSpineIndex = NULL, ebookCharOffset = NULL
+        WHERE id = :audiobookId
+        """,
+    )
+    suspend fun linkEbook(audiobookId: Long, ebookUri: String)
+
+    /** Removes the app's record of the ebook. Never touches the file, as with removing a book. */
+    @Query(
+        """
+        UPDATE audiobooks
+        SET ebookUri = NULL, ebookSpineIndex = NULL, ebookCharOffset = NULL
+        WHERE id = :audiobookId
+        """,
+    )
+    suspend fun unlinkEbook(audiobookId: Long)
+
+    @Query(
+        """
+        UPDATE audiobooks
+        SET ebookSpineIndex = :spineIndex, ebookCharOffset = :charOffset
+        WHERE id = :audiobookId
+        """,
+    )
+    suspend fun updateReadingPosition(audiobookId: Long, spineIndex: Int, charOffset: Int)
 }

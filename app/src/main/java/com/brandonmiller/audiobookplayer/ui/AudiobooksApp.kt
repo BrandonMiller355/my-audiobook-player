@@ -8,6 +8,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.brandonmiller.audiobookplayer.ui.library.LibraryScreen
 import com.brandonmiller.audiobookplayer.ui.player.PlayerScreen
+import com.brandonmiller.audiobookplayer.ui.reader.ReaderScreen
 
 object Routes {
     const val LIBRARY = "library"
@@ -15,7 +16,16 @@ object Routes {
     const val ARG_BOOK_ID = "bookId"
     const val PLAYER = "player/{$ARG_BOOK_ID}"
 
+    /**
+     * The Reader is its own destination rather than a second face of the Player
+     * (`add-ebook-companion` design D5). As a toggle inside the Player, hardware back from the
+     * reading page would drop the user at the Library, skipping the Player entirely.
+     */
+    const val READER = "reader/{$ARG_BOOK_ID}"
+
     fun player(bookId: String) = "player/$bookId"
+
+    fun reader(bookId: String) = "reader/$bookId"
 }
 
 @Composable
@@ -32,7 +42,18 @@ fun AudiobooksApp() {
             route = Routes.PLAYER,
             arguments = listOf(navArgument(Routes.ARG_BOOK_ID) { type = NavType.StringType }),
         ) { entry ->
+            val bookId = entry.arguments?.getString(Routes.ARG_BOOK_ID).orEmpty()
             PlayerScreen(
+                bookId = bookId,
+                onBack = { navController.popBackStack() },
+                onOpenReader = { navController.navigate(Routes.reader(bookId)) },
+            )
+        }
+        composable(
+            route = Routes.READER,
+            arguments = listOf(navArgument(Routes.ARG_BOOK_ID) { type = NavType.StringType }),
+        ) { entry ->
+            ReaderScreen(
                 bookId = entry.arguments?.getString(Routes.ARG_BOOK_ID).orEmpty(),
                 onBack = { navController.popBackStack() },
             )

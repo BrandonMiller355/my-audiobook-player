@@ -38,6 +38,24 @@ data class AudiobookEntity(
      * would be read by the library query on every emission.
      */
     val artworkPath: String? = null,
+    /**
+     * The linked EPUB's document URI, held under a persistable read grant, or null for "no ebook"
+     * (`add-ebook-companion` design D4). As with the audio, the file itself is never copied.
+     *
+     * Columns rather than a table because a book has at most one ebook: a join table would be
+     * ceremony for a one-to-one relationship, and a join on the query that runs on every library
+     * emission.
+     */
+    val ebookUri: String? = null,
+    /**
+     * Where the user stopped reading, as a spine index and a character offset into that spine
+     * item's plain text (design D3). Both null until the ebook has been opened.
+     *
+     * Deliberately not a scroll offset in pixels: text size, line spacing, typeface, and rotation
+     * all invalidate one of those, and this change adds controls for the first three.
+     */
+    val ebookSpineIndex: Int? = null,
+    val ebookCharOffset: Int? = null,
 )
 
 /**
@@ -100,6 +118,12 @@ data class LibraryBook(
     val positionMs: Long? = null,
     /** When this book was last played, or null if it never has been — the resume card's tiebreak. */
     val lastPlayedAt: Long? = null,
+    /**
+     * Whether this book has an ebook linked (`add-ebook-companion` design D16). A boolean rather
+     * than the URI: the row needs to know *whether*, not *which*, and carrying a URI through a
+     * query that runs on every library emission buys nothing.
+     */
+    val hasEbook: Boolean = false,
 ) {
     /**
      * How far through the book the saved position is, or null when either figure is missing. Both

@@ -75,7 +75,9 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.brandonmiller.audiobookplayer.R
+import com.brandonmiller.audiobookplayer.ui.BookIcon
 import com.brandonmiller.audiobookplayer.ui.ChevronIcon
+import com.brandonmiller.audiobookplayer.ui.library.OpenPersistableDocument
 import com.brandonmiller.audiobookplayer.ui.FullBleedBookCover
 import com.brandonmiller.audiobookplayer.ui.HorizontalDirection
 import com.brandonmiller.audiobookplayer.ui.PLAYER_COVER_MAX_HEIGHT_FRACTION
@@ -104,6 +106,7 @@ internal enum class SheetSection { Chapters, Speed }
 fun PlayerScreen(
     bookId: String,
     onBack: () -> Unit,
+    onOpenReader: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PlayerViewModel = viewModel(
         factory = PlayerViewModel.factory(LocalContext.current, bookId),
@@ -113,6 +116,19 @@ fun PlayerScreen(
     val colors = audiobookColors
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val pickEbook = rememberLauncherForActivityResult(OpenPersistableDocument()) { uri ->
+        uri?.let(viewModel::linkEbook)
+    }
+
+    // Picking an ebook goes straight on into reading it, rather than returning the user to the
+    // cover to press the same icon a second time.
+    LaunchedEffect(state.openReaderRequested) {
+        if (state.openReaderRequested) {
+            viewModel.consumeReaderRequest()
+            onOpenReader()
+        }
+    }
 
     // Local, not ViewModel state: it has no meaning outside the sheet's own lifetime, and putting
     // it on the ViewModel would make the ViewModel responsible for a scroll position (design D7).
@@ -161,7 +177,19 @@ fun PlayerScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            PlayerCover(artworkPath = state.artworkPath, bookId = state.bookId, onBack = onBack)
+            PlayerCover(
+                artworkPath = state.artworkPath,
+                bookId = state.bookId,
+                hasEbook = state.hasEbook,
+                onBack = onBack,
+                onEbook = {
+                    if (state.hasEbook) {
+                        onOpenReader()
+                    } else {
+                        pickEbook.launch(OpenPersistableDocument.EBOOK_MIME_TYPES)
+                    }
+                },
+            )
 
             Column(
                 modifier = Modifier
@@ -272,7 +300,13 @@ private fun LightStatusBarIcons() {
  * they cannot hit without looking — which is the whole premise of the design (design D9).
  */
 @Composable
-private fun PlayerCover(artworkPath: String?, bookId: Long, onBack: () -> Unit) {
+private fun PlayerCover(
+    artworkPath: String?,
+    bookId: Long,
+    hasEbook: Boolean,
+    onBack: () -> Unit,
+    onEbook: () -> Unit,
+) {
     val colors = audiobookColors
 
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -309,24 +343,51 @@ private fun PlayerCover(artworkPath: String?, bookId: Long, onBack: () -> Unit) 
                 )
             }
 
-            Box(
+            // Back and the ebook control share the same disc treatment on the same top scrim; the
+            // scrim exists so one styling is safe over any artwork, which is what lets a second
+            // control join it without its own.
+            Row(
                 modifier = Modifier
+                    .fillMaxWidth()
                     .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(start = 16.dp, top = 6.dp)
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(colors.backScrim)
-                    .clickable(onClick = onBack),
-                contentAlignment = Alignment.Center,
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                ChevronIcon(
-                    direction = HorizontalDirection.Left,
-                    size = 24.dp,
-                    color = colors.onInk,
-                    contentDescription = stringResource(R.string.player_back),
-                )
+                CoverButton(onClick = onBack) {
+                    ChevronIcon(
+                        direction = HorizontalDirection.Left,
+                        size = 24.dp,
+                        color = colors.onInk,
+                        contentDescription = stringResource(R.string.player_back),
+                    )
+                }
+                CoverButton(onClick = onEbook) {
+                    BookIcon(
+                        size = 24.dp,
+                        color = colors.onInk,
+                        filled = hasEbook,
+                        contentDescription = stringResource(
+                            if (hasEbook) R.string.ebook_open else R.string.ebook_link,
+                        ),
+                    )
+                }
             }
         }
+    }
+}
+
+/** The 44dp disc both cover controls sit in. */
+@Composable
+private fun CoverButton(onClick: () -> Unit, content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(audiobookColors.backScrim)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        content()
     }
 }
 

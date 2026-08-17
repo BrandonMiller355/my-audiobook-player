@@ -60,4 +60,42 @@
     <string name="player_sheet_subtitle">%1$s · %2$d TOTAL</string>
     <string name="player_sheet_collapse">Close chapters</string>
     <string name="player_sheet_speed">Playback speed %1$s</string>
+
+    <!-- Ebook companion. The icon on the cover carries two different actions, so it carries two
+         different descriptions — see add-ebook-companion design D15. -->
+    <string name="ebook_link">Link an ebook</string>
+    <string name="ebook_open">Read the ebook</string>
+    <string name="ebook_linked_indicator">Has an ebook</string>
+
+    <string name="ebook_not_an_epub">That file is not an EPUB.</string>
+    <string name="ebook_encrypted">That ebook is protected and cannot be opened.</string>
+    <string name="ebook_unreadable">That ebook could not be read.</string>
+
+    <!-- Reader -->
+    <string name="reader_loading">Opening…</string>
+    <string name="reader_back">Back to the player</string>
+    <string name="reader_contents">Contents</string>
+    <string name="reader_contents_close">Close contents</string>
+    <string name="reader_contents_empty">This ebook has no table of contents.</string>
+    <string name="reader_settings">Reading settings</string>
+    <string name="reader_settings_close">Close settings</string>
+    <string name="reader_change">Change ebook</string>
+    <string name="reader_unlink">Unlink ebook</string>
+
+    <string name="reader_unavailable_title">Ebook unavailable</string>
+    <string name="reader_unavailable_relink">Link a different ebook</string>
+
+    <!-- Reading settings -->
+    <string name="reader_text_size">Text size</string>
+    <string name="reader_line_spacing">Line spacing</string>
+    <string name="reader_typeface">Typeface</string>
+    <string name="reader_typeface_serif">Serif</string>
+    <string name="reader_typeface_sans">Sans</string>
+    <string name="reader_brightness">Brightness</string>
+    <string name="reader_smaller">Smaller</string>
+    <string name="reader_larger">Larger</string>
+    <string name="reader_tighter">Tighter</string>
+    <string name="reader_looser">Looser</string>
+    <string name="reader_dimmer">Dimmer</string>
+    <string name="reader_brighter">Brighter</string>
 </resources>

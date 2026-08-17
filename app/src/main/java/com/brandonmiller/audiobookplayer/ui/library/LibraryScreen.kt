@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -54,6 +55,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.brandonmiller.audiobookplayer.R
 import com.brandonmiller.audiobookplayer.data.LibraryBook
 import com.brandonmiller.audiobookplayer.ui.BookCover
+import com.brandonmiller.audiobookplayer.ui.BookIcon
 import com.brandonmiller.audiobookplayer.ui.DocumentIcon
 import com.brandonmiller.audiobookplayer.ui.FolderIcon
 import com.brandonmiller.audiobookplayer.ui.LibraryCoverSize
@@ -299,12 +301,25 @@ private fun ResumeCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                book.remainingMs?.let { remaining ->
-                    Text(
-                        text = stringResource(R.string.library_resume_remaining, formatDuration(remaining)),
-                        style = AudiobookType.monoMeta,
-                        color = colors.textSecondary,
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    book.remainingMs?.let { remaining ->
+                        Text(
+                            text = stringResource(R.string.library_resume_remaining, formatDuration(remaining)),
+                            style = AudiobookType.monoMeta,
+                            color = colors.textSecondary,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    // The resume card is a library row too, and it is the book most likely to have
+                    // an ebook linked — leaving it unmarked here would be the conspicuous gap.
+                    if (book.hasEbook) {
+                        BookIcon(
+                            size = 14.dp,
+                            color = colors.textSecondary,
+                            filled = true,
+                            contentDescription = stringResource(R.string.ebook_linked_indicator),
+                        )
+                    }
                 }
             }
 
@@ -388,15 +403,28 @@ private fun BookRow(
                     color = colors.error,
                 )
             } else {
-                Text(
-                    // The duration is omitted rather than faked when it is not yet known — see
-                    // `LibraryBook.durationMs`.
-                    text = book.durationMs?.let {
-                        stringResource(R.string.library_row_meta, book.chapterCount, formatDuration(it))
-                    } ?: stringResource(R.string.library_row_meta_no_duration, book.chapterCount),
-                    style = AudiobookType.monoMeta,
-                    color = colors.textTertiary,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        // The duration is omitted rather than faked when it is not yet known — see
+                        // `LibraryBook.durationMs`.
+                        text = book.durationMs?.let {
+                            stringResource(R.string.library_row_meta, book.chapterCount, formatDuration(it))
+                        } ?: stringResource(R.string.library_row_meta_no_duration, book.chapterCount),
+                        style = AudiobookType.monoMeta,
+                        color = colors.textTertiary,
+                    )
+                    // An indicator, not a control: the row stays one large tap target, and the
+                    // reader is one further tap away regardless (`add-ebook-companion` design D16).
+                    if (book.hasEbook) {
+                        Spacer(Modifier.width(8.dp))
+                        BookIcon(
+                            size = 14.dp,
+                            color = colors.textTertiary,
+                            filled = true,
+                            contentDescription = stringResource(R.string.ebook_linked_indicator),
+                        )
+                    }
+                }
             }
         }
     }
