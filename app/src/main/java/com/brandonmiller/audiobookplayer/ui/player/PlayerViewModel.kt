@@ -19,11 +19,11 @@ import com.brandonmiller.audiobookplayer.data.ChapterEntity
 import com.brandonmiller.audiobookplayer.data.LibraryDao
 import com.brandonmiller.audiobookplayer.data.SOURCE_TYPE_M4B
 import com.brandonmiller.audiobookplayer.data.SpeedPreferences
+import com.brandonmiller.audiobookplayer.playback.BookTimeline
 import com.brandonmiller.audiobookplayer.playback.PlaybackService
 import com.brandonmiller.audiobookplayer.playback.chapterTimeline
 import com.brandonmiller.audiobookplayer.playback.currentLocation
-import com.brandonmiller.audiobookplayer.playback.mediaIdBelongsTo
-import com.brandonmiller.audiobookplayer.playback.mediaItemsFor
+import com.brandonmiller.audiobookplayer.playback.loadBook
 import com.brandonmiller.audiobookplayer.playback.resolveChapterDurations
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -38,6 +38,7 @@ import kotlinx.coroutines.withContext
 
 data class PlayerUiState(
     val connected: Boolean = false,
+    val bookId: Long = 0,
     val bookTitle: String = "",
     val chapterTitle: String = "",
     val chapterNumber: Int = 0,
@@ -50,7 +51,25 @@ data class PlayerUiState(
     val speed: Float = 1.0f,
     /** Path to this book's cached cover, or null to show the placeholder. */
     val artworkPath: String? = null,
+    /** The whole book's chapters, for the inline chapter sheet. Empty until the book has loaded. */
+    val chapters: List<PlayerChapter> = emptyList(),
+    /**
+     * How much of the current chapter is left — what the sheet's current row shows in place of that
+     * chapter's total length. Null when the chapter's end is not yet known.
+     */
+    val chapterRemainingMs: Long? = null,
     val errorMessage: String? = null,
+)
+
+/**
+ * One row of the chapter sheet. [startMs] is absolute across the book, so selecting a chapter is
+ * the same `seekToAbsolute` the scrubber already performs rather than a second seek path.
+ */
+data class PlayerChapter(
+    val number: Int,
+    val title: String,
+    val startMs: Long,
+    val durationMs: Long?,
 )
 
 class PlayerViewModel(
@@ -130,39 +149,22 @@ class PlayerViewModel(
 
             _state.update {
                 it.copy(
+                    bookId = bookId,
                     bookTitle = book.title,
                     chapterCount = chapters.size,
                     artworkPath = book.artworkPath,
                 )
             }
 
-            // Reopening the Player for the book that is already loaded must not restart it from
-            // zero, so only set the playlist when the controller is holding something else.
-            if (!mediaIdBelongsTo(controller.currentMediaItem?.mediaId, bookId)) {
-                // Clear playWhenReady first. Switching books while another one is playing would
-                // otherwise inherit its "playing" state and start the new book by itself, which
-                // is not what opening a book is supposed to do (PRD §6 ends its flow with the
-                // user pressing play).
-                controller.playWhenReady = false
-                val mediaItems = mediaItemsFor(book, chapters)
-                controller.setMediaItems(mediaItems)
-                controller.prepare()
+            val loaded = controller.loadBook(book, chapters, speedPreferences.lastUsedSpeed())
+            if (loaded != null) {
+                _state.update { it.copy(speed = loaded.speed) }
 
-                val savedIndex = book.lastMediaItemIndex
-                val savedPosition = book.lastPositionMs
-                if (savedIndex != null && savedPosition != null && savedIndex < chapters.size) {
-                    controller.seekTo(savedIndex, savedPosition)
-                }
-
-                val speed = book.playbackSpeed ?: speedPreferences.lastUsedSpeed()
-                controller.playbackParameters = PlaybackParameters(speed, 1.0f)
-                _state.update { it.copy(speed = speed) }
-
-                chapterDurationsMs = List(mediaItems.size) { null }
+                chapterDurationsMs = List(loaded.mediaItems.size) { null }
                 // A single-file book's boundaries are exact and already on its media item, so
                 // there is nothing to resolve — and resolving would mean opening a multi-gigabyte
                 // container to learn a figure that was stored at add time (design D2).
-                if (book.sourceType != SOURCE_TYPE_M4B) resolveDurationsInBackground(mediaItems)
+                if (book.sourceType != SOURCE_TYPE_M4B) resolveDurationsInBackground(loaded.mediaItems)
             }
             readPlayerState()
         }
@@ -183,8 +185,24 @@ class PlayerViewModel(
                     chapterDurationsMs = chapterDurationsMs.toMutableList().apply { this[index] = durationMs }
                     readPlayerState()
                 }
+                storeResolvedDuration(index, durationMs)
             }
         }
+    }
+
+    /**
+     * Keeps what this pass just read, so the library can show the book's total length and the next
+     * open starts with an exact scrubber instead of resolving from scratch (design D3).
+     *
+     * A folder chapter is one whole file starting at zero, so its end is its duration. The index is
+     * the media item's, which for a folder book is also the chapter's — the only book shape that
+     * reaches here, since a single-file book's boundaries were parsed at add time and never need
+     * resolving.
+     */
+    private suspend fun storeResolvedDuration(index: Int, durationMs: Long?) {
+        val chapterId = chapters.getOrNull(index)?.id ?: return
+        if (durationMs == null || durationMs <= 0) return
+        withContext(Dispatchers.IO) { dao.updateChapterEnd(chapterId, durationMs) }
     }
 
     /** Player.Listener only fires on state-change events; playing position needs its own tick. */
@@ -209,9 +227,32 @@ class PlayerViewModel(
                 chapterTitle = chapters.getOrNull(location.chapterIndex)?.title.orEmpty(),
                 absolutePositionMs = timeline.absolutePosition(location),
                 bookDurationMs = timeline.totalDurationMs(),
+                chapters = chapterRows(timeline),
+                chapterRemainingMs = timeline.remainingInChapter(location),
             )
         }
     }
+
+    /**
+     * The sheet's rows: the stored chapter titles paired with the extents the timeline computes.
+     *
+     * Built from the timeline rather than from the chapter rows alone because a folder book's
+     * durations live only in the timeline until they have been resolved, and because the timeline
+     * is the one thing that already agrees with the scrubber about where each chapter starts.
+     *
+     * The timeline reports a single placeholder chapter before anything has loaded; pairing
+     * against [chapters] drops it, so the sheet shows nothing rather than one nameless row.
+     */
+    private fun chapterRows(timeline: BookTimeline): List<PlayerChapter> =
+        timeline.chapterSpans().mapNotNull { span ->
+            val chapter = chapters.getOrNull(span.chapterIndex) ?: return@mapNotNull null
+            PlayerChapter(
+                number = span.chapterIndex + 1,
+                title = chapter.title,
+                startMs = span.absoluteStartMs,
+                durationMs = span.durationMs,
+            )
+        }
 
     fun togglePlayPause() {
         val player = controller ?: return

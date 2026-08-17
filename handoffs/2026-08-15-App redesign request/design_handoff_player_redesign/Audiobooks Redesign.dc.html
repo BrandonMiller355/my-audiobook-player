@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Public+Sans:wght@400;500;600&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Figtree:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+  body { margin: 0; background: #EDE6DE; }
+  a { color: #3B4A5A; text-decoration: none; }
+  a:hover { color: #16202B; text-decoration: underline; }
+  *, *::before, *::after { box-sizing: border-box; }
+</style>
+</helmet>
+
+<section style="display:flex;flex-direction:column;gap:40px;padding:72px 80px 20px">
+  <div style="max-width:760px;display:flex;flex-direction:column;gap:14px;font-family:'Public Sans',sans-serif">
+    <div style="font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#8A827A">Turn 2 — dark variant</div>
+    <h1 style="margin:0;font-family:'Newsreader',serif;font-weight:500;font-size:44px;line-height:1.05;color:#1C1B1A">1b at night</h1>
+    <p style="margin:0;font-size:16px;line-height:1.6;color:#57514B;text-wrap:pretty">Same layout, sizes, and targets as <a href="#1b">1b</a> — only the palette inverts. The play button flips to light-on-dark so it stays the brightest thing on screen, and the current-chapter row inverts with it. Cover art keeps its own colour; the surround gets out of its way.</p>
+  </div>
+
+  <sc-if value="{{ show2a }}" hint-placeholder-val="{{ true }}">
+  <div id="2a" style="display:flex;flex-direction:column;gap:20px;font-family:'Archivo',sans-serif">
+    <div style="display:flex;align-items:baseline;gap:12px">
+      <span style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:24px;padding:0 9px;border-radius:12px;background:#1C1B1A;color:#FCF8F5;font-size:12px;font-weight:600;letter-spacing:.06em">2a</span>
+      <span style="font-weight:700;font-size:26px;letter-spacing:-.02em;color:#1C1B1A">Arm's Length — dark</span>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:28px">
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="width:390px;height:844px;background:#131211;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.28);overflow:hidden;display:flex;flex-direction:column">
+        <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#F7F3EF"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+        <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:10px 22px 20px"><span style="font-size:36px;font-weight:700;letter-spacing:-.03em;color:#F7F3EF">Library</span><div style="width:44px;height:44px;border-radius:50%;background:#221F1D;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#F7F3EF" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></div></div>
+        <div style="flex:none;padding:0 22px 24px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;gap:16px;align-items:stretch">
+            <image-slot id="cov2aLib" style="width:132px;height:132px;flex:none" shape="rounded" radius="6" placeholder="Cover"></image-slot>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;min-width:0">
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <span style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6E6660">Keep listening</span>
+                <span style="font-size:24px;font-weight:700;line-height:1.1;letter-spacing:-.02em;color:#F7F3EF">The Wager</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#A9A19A">4h 20m left</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:14px">
+                <div style="width:62px;height:62px;border-radius:50%;background:#F7F3EF;display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="26" height="26" fill="#131211" style="margin-left:3px"><path d="M8 5l12 7-12 7z"></path></svg></div>
+                <div style="flex:1;height:5px;border-radius:3px;background:#2E2A27;position:relative"><div style="position:absolute;left:0;top:0;height:5px;width:44%;border-radius:3px;background:#F7F3EF"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px;padding:0 22px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:16px;padding:12px 0"><div style="width:64px;height:64px;flex:none;border-radius:6px;background:#3A332B"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;font-weight:600;letter-spacing:-.01em;color:#F7F3EF">Piranesi</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#8A827A">18 ch · 8h 40m</span></div></div>
+          <div style="display:flex;align-items:center;gap:16px;padding:12px 0"><div style="width:64px;height:64px;flex:none;border-radius:6px;background:#2C3742"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;font-weight:600;letter-spacing:-.01em;color:#F7F3EF">Shōgun</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#8A827A">61 ch · 53h 20m</span></div></div>
+          <div style="display:flex;align-items:center;gap:16px;padding:12px 0"><div style="width:64px;height:64px;flex:none;border-radius:6px;background:#332F2A"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;font-weight:600;letter-spacing:-.01em;color:#F7F3EF">The Dawn of Everything</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#8A827A">24 ch · 24h 05m</span></div></div>
+          <div style="display:flex;align-items:center;gap:16px;padding:12px 0"><div style="width:64px;height:64px;flex:none;border-radius:6px;background:#2B1A18;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#F2B8B5" stroke-width="2" stroke-linecap="round"><path d="M12 8v5M12 16.5v.5"></path><circle cx="12" cy="12" r="9"></circle></svg></div><div style="flex:1;display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;font-weight:600;letter-spacing:-.01em;color:#F7F3EF">Wolf Hall</span><span style="font-size:13px;font-weight:600;color:#F2B8B5">Source unavailable — tap to relink</span></div></div>
+          <div style="display:flex;align-items:center;gap:16px;padding:12px 0"><div style="width:64px;height:64px;flex:none;border-radius:6px;background:#3A332B"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;font-weight:600;letter-spacing:-.01em;color:#F7F3EF">The Warmth of Other Suns</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#8A827A">32 ch · 22h 15m</span></div></div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#8A827A;text-align:center">Library — light play button carries the accent</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="width:390px;height:844px;background:#131211;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.28);overflow:hidden;display:flex;flex-direction:column;position:relative">
+        <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#F7F3EF;position:absolute;top:0;left:0;right:0;z-index:2"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+        <div style="flex:none;position:relative;width:390px;height:390px"><image-slot id="cov2aPlay" style="width:390px;height:390px" shape="rect" placeholder="Drop cover art"></image-slot><div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,10,9,.5) 0%,rgba(11,10,9,0) 34%);pointer-events:none"></div><div style="position:absolute;bottom:0;left:0;right:0;height:64px;background:linear-gradient(180deg,rgba(19,18,17,0) 0%,#131211 100%);pointer-events:none"></div><div style="position:absolute;top:58px;left:16px;width:44px;height:44px;border-radius:50%;background:rgba(11,10,9,.5);display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#F7F3EF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:24px 22px 0">
+          <span style="font-size:27px;font-weight:700;line-height:1.08;letter-spacing:-.025em;color:#F7F3EF">The Wager</span>
+          <span style="margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:.04em;color:#8A827A">CH 12/26 — A SHIP'S COMPANY</span>
+          <div style="margin-top:22px;display:flex;flex-direction:column;gap:10px">
+            <div style="position:relative;height:8px;border-radius:4px;background:#2E2A27"><div style="position:absolute;left:0;top:0;height:8px;width:44%;border-radius:4px;background:#F7F3EF"></div><div style="position:absolute;left:44%;top:-6px;width:20px;height:20px;margin-left:-10px;border-radius:50%;background:#F7F3EF;border:4px solid #131211"></div></div>
+            <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:15px;color:#F7F3EF"><span>5:12:40</span><span style="color:#8A827A">−6:33:05</span></div>
+          </div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:6px 0">
+            <div style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;color:#C6BEB6"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5l-7 7 7 7"></path><path d="M20 5l-7 7 7 7"></path></svg></div>
+            <div style="width:60px;height:60px;display:flex;align-items:center;justify-content:center;color:#F7F3EF"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div>
+            <div style="width:104px;height:104px;border-radius:50%;background:#F7F3EF;display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="40" height="40" fill="#131211"><rect x="7" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg></div>
+            <div style="width:60px;height:60px;display:flex;align-items:center;justify-content:center;color:#F7F3EF"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+            <div style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;color:#C6BEB6"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5l7 7-7 7"></path><path d="M13 5l7 7-7 7"></path></svg></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.04em;color:#6E6660;padding-bottom:8px"><span style="width:52px;text-align:center">1M</span><span style="width:60px;text-align:center">10S</span><span style="width:104px"></span><span style="width:60px;text-align:center">10S</span><span style="width:52px;text-align:center">1M</span></div>
+        </div>
+        <div style="flex:none;display:flex;border-top:1px solid #2E2A27">
+          <div style="flex:1;padding:22px 0;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:17px;font-weight:600;color:#F7F3EF">Chapters</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6E6660">12/26</span></div>
+          <div style="width:1px;background:#2E2A27"></div>
+          <div style="flex:1;padding:22px 0;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:500;color:#F7F3EF">1.25×</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6E6660">SPEED</span></div>
+        </div>
+        <div style="flex:none;height:20px"></div>
+      </div>
+      <div style="font-size:12px;color:#8A827A;text-align:center">Player — cover fades into the surround at its base</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="width:390px;height:844px;background:#131211;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.28);overflow:hidden;display:flex;flex-direction:column">
+        <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#F7F3EF"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+        <div style="flex:none;display:flex;align-items:center;gap:14px;padding:6px 22px 18px;border-bottom:1px solid #2E2A27">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#F7F3EF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M6 15l6-6 6 6"></path></svg>
+          <div style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:19px;font-weight:700;letter-spacing:-.02em;color:#F7F3EF">Chapters</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#8A827A">THE WAGER · 26 TOTAL</span></div>
+          <div style="width:52px;height:52px;border-radius:50%;background:#F7F3EF;display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="20" height="20" fill="#131211"><rect x="7" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg></div>
+        </div>
+        <div style="flex:none;padding:18px 22px;display:flex;gap:10px;overflow:hidden;border-bottom:1px solid #2E2A27;font-family:'JetBrains Mono',monospace;font-size:15px">
+          <span style="flex:none;padding:11px 15px;border-radius:6px;background:#221F1D;color:#C6BEB6">1.0</span>
+          <span style="flex:none;padding:11px 15px;border-radius:6px;background:#221F1D;color:#C6BEB6">1.1</span>
+          <span style="flex:none;padding:11px 15px;border-radius:6px;background:#F7F3EF;color:#131211">1.25</span>
+          <span style="flex:none;padding:11px 15px;border-radius:6px;background:#221F1D;color:#C6BEB6">1.5</span>
+          <span style="flex:none;padding:11px 15px;border-radius:6px;background:#221F1D;color:#C6BEB6">1.75</span>
+          <span style="flex:none;padding:11px 15px;border-radius:6px;background:#221F1D;color:#C6BEB6">2.0</span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:14px;padding:16px 22px"><span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#6E6660;width:26px">10</span><span style="flex:1;font-size:18px;font-weight:500;color:#C6BEB6">The Anchorage</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#6E6660">32:10</span></div>
+          <div style="display:flex;align-items:center;gap:14px;padding:16px 22px"><span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#6E6660;width:26px">11</span><span style="flex:1;font-size:18px;font-weight:500;color:#C6BEB6">Wager Island</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#6E6660">41:55</span></div>
+          <div style="display:flex;align-items:center;gap:14px;padding:18px 22px;background:#F7F3EF"><span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#6E6660;width:26px">12</span><span style="flex:1;font-size:19px;font-weight:700;letter-spacing:-.01em;color:#131211">A Ship's Company</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#4A4640">18:02</span></div>
+          <div style="display:flex;align-items:center;gap:14px;padding:16px 22px"><span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#6E6660;width:26px">13</span><span style="flex:1;font-size:18px;font-weight:500;color:#C6BEB6">The Carpenter</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#6E6660">28:44</span></div>
+          <div style="display:flex;align-items:center;gap:14px;padding:16px 22px"><span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#6E6660;width:26px">14</span><span style="flex:1;font-size:18px;font-weight:500;color:#C6BEB6">Mutiny</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#6E6660">36:20</span></div>
+          <div style="display:flex;align-items:center;gap:14px;padding:16px 22px"><span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#6E6660;width:26px">15</span><span style="flex:1;font-size:18px;font-weight:500;color:#C6BEB6">The Speedwell</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#6E6660">44:07</span></div>
+          <div style="display:flex;align-items:center;gap:14px;padding:16px 22px"><span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#6E6660;width:26px">16</span><span style="flex:1;font-size:18px;font-weight:500;color:#C6BEB6">Byron's Journal</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#6E6660">30:51</span></div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#8A827A;text-align:center">Chapters — current row inverts to light</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="width:390px;height:844px;background:#131211;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.28);overflow:hidden;display:flex;flex-direction:column">
+        <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#F7F3EF"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+        <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:10px 22px 20px"><span style="font-size:36px;font-weight:700;letter-spacing:-.03em;color:#F7F3EF">Library</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:18px;padding:0 30px 60px">
+          <span style="font-size:30px;font-weight:700;line-height:1.1;letter-spacing:-.03em;color:#F7F3EF">Nothing here yet.</span>
+          <span style="font-size:17px;line-height:1.5;color:#A9A19A;text-wrap:pretty">Point the app at a folder of audio files or a single .m4b, and it appears here with its chapters.</span>
+          <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px">
+            <div style="display:flex;align-items:center;gap:14px;padding:20px;border-radius:10px;background:#F7F3EF"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#131211" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h6l2 2h10v10H3z"></path></svg><span style="font-size:18px;font-weight:600;color:#131211">Choose a folder</span></div>
+            <div style="display:flex;align-items:center;gap:14px;padding:20px;border-radius:10px;background:#221F1D"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#F7F3EF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6v18h12V7z"></path><path d="M14 3v4h4"></path></svg><span style="font-size:18px;font-weight:600;color:#F7F3EF">Choose a single .m4b</span></div>
+          </div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.04em;color:#6E6660;margin-top:6px">STAYS ON THIS DEVICE · NO ACCOUNT</span>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#8A827A;text-align:center">Empty state — primary action inverts</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="width:390px;height:844px;background:#131211;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.28);overflow:hidden;display:flex;flex-direction:column;position:relative">
+        <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#F7F3EF"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+        <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:10px 22px 20px"><span style="font-size:36px;font-weight:700;letter-spacing:-.03em;color:#F7F3EF">Library</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px;padding:0 22px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:16px;padding:12px 0"><div style="width:64px;height:64px;flex:none;border-radius:6px;background:#3A332B"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;font-weight:600;color:#F7F3EF">Piranesi</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#8A827A">18 ch · 8h 40m</span></div></div>
+          <div style="display:flex;align-items:center;gap:16px;padding:12px 0"><div style="width:64px;height:64px;flex:none;border-radius:6px;background:#2C3742"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;font-weight:600;color:#F7F3EF">Shōgun</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#8A827A">61 ch · 53h 20m</span></div></div>
+        </div>
+        <div style="position:absolute;inset:0;background:rgba(6,6,5,.62);display:flex;align-items:flex-end">
+          <div style="width:100%;background:#1C1A18;border-radius:22px 22px 44px 44px;padding:28px 24px 30px;display:flex;flex-direction:column;gap:12px">
+            <span style="font-size:24px;font-weight:700;line-height:1.15;letter-spacing:-.02em;color:#F7F3EF">Remove Piranesi?</span>
+            <span style="font-size:16px;line-height:1.5;color:#A9A19A;text-wrap:pretty">Removes the book from your library. Your files stay exactly where they are.</span>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+              <div style="padding:18px;border-radius:10px;background:#8C1D18;text-align:center;font-size:18px;font-weight:600;color:#FFDAD6">Remove from library</div>
+              <div style="padding:18px;border-radius:10px;background:#2A2724;text-align:center;font-size:18px;font-weight:600;color:#F7F3EF">Keep it</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#8A827A;text-align:center">Remove — sheet lifts one step lighter than the screen</div>
+      </div>
+
+    </div>
+  </div>
+  </sc-if>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:40px;padding:40px 80px 40px">
+  <div style="max-width:760px;display:flex;flex-direction:column;gap:14px;font-family:'Public Sans',sans-serif">
+    <div style="font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#8A827A">Turn 1 — three directions</div>
+    <h1 style="margin:0;font-family:'Newsreader',serif;font-weight:500;font-size:44px;line-height:1.05;color:#1C1B1A">A rethink of the player, not a repaint</h1>
+    <p style="margin:0;font-size:16px;line-height:1.6;color:#57514B;text-wrap:pretty">Same features, same warm-neutral palette from your theme. In all three: the cover fills the width and is never letterboxed, the pill buttons are gone, and playback lives on one solid panel under the art. Chapters and speed are inline — no second screen. Compare <a href="#1a">1a</a>, <a href="#1b">1b</a>, <a href="#1c">1c</a>; today's build is at the bottom for reference.</p>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:56px;align-items:flex-start">
+
+    <sc-if value="{{ show1a }}" hint-placeholder-val="{{ true }}">
+    <div id="1a" style="display:flex;flex-direction:column;gap:20px;font-family:'Public Sans',sans-serif">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:24px;padding:0 9px;border-radius:12px;background:#1C1B1A;color:#FCF8F5;font-size:12px;font-weight:600;letter-spacing:.06em">1a</span>
+        <span style="font-family:'Newsreader',serif;font-size:26px;color:#1C1B1A">Paper Edition</span>
+      </div>
+      <p style="margin:0;max-width:400px;font-size:14px;line-height:1.55;color:#57514B;text-wrap:pretty">Editorial and quiet. Hairline rules instead of containers, a serif for titles, controls that read as type rather than as widgets.</p>
+
+      <div style="display:flex;flex-wrap:wrap;gap:28px">
+
+        <!-- 1a Library -->
+        <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="width:390px;height:844px;background:#FCF8F5;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.16);overflow:hidden;display:flex;flex-direction:column">
+          <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#1C1B1A"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+          <div style="flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:14px 24px 18px"><span style="font-family:'Newsreader',serif;font-size:32px;color:#1C1B1A">Audiobooks</span><span style="font-size:15px;font-weight:600;color:#3B4A5A;padding-bottom:6px">Add</span></div>
+          <div style="flex:none;margin:0 24px;padding:18px 0 22px;border-top:1px solid #E4DCD3;border-bottom:1px solid #E4DCD3;display:flex;align-items:center;gap:16px">
+            <image-slot id="cov1aLib" style="width:96px;height:96px;flex:none" shape="rounded" radius="3" placeholder="Cover"></image-slot>
+            <div style="flex:1;display:flex;flex-direction:column;gap:5px;min-width:0">
+              <span style="font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#8A827A">Continue</span>
+              <span style="font-family:'Newsreader',serif;font-size:21px;line-height:1.15;color:#1C1B1A">The Wager</span>
+              <span style="font-size:13px;color:#57514B">Chapter 12 · 4h 20m left</span>
+            </div>
+            <div style="flex:none;width:58px;height:58px;border-radius:50%;background:#3B4A5A;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="22" height="22" fill="#FCF8F5" style="margin-left:3px"><path d="M8 5l12 7-12 7z"></path></svg></div>
+          </div>
+          <div style="flex:none;padding:22px 24px 10px;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#8A827A">All books · 5</div>
+          <div style="flex:1;display:flex;flex-direction:column;padding:0 24px;overflow:hidden">
+            <div style="display:flex;align-items:center;gap:14px;padding:15px 0;border-bottom:1px solid #EFE7DE">
+              <div style="width:56px;height:56px;flex:none;border-radius:3px;background:#E6DED3;display:flex;align-items:center;justify-content:center;font-family:'Newsreader',serif;font-size:20px;color:#8A827A">P</div>
+              <div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:'Newsreader',serif;font-size:18px;color:#1C1B1A">Piranesi</span><span style="font-size:13px;color:#57514B">18 chapters</span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px;padding:15px 0;border-bottom:1px solid #EFE7DE">
+              <div style="width:56px;height:56px;flex:none;border-radius:3px;background:#D6E0EC;display:flex;align-items:center;justify-content:center;font-family:'Newsreader',serif;font-size:20px;color:#7C8B9C">S</div>
+              <div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:'Newsreader',serif;font-size:18px;color:#1C1B1A">Shōgun</span><span style="font-size:13px;color:#57514B">61 chapters</span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px;padding:15px 0;border-bottom:1px solid #EFE7DE">
+              <div style="width:56px;height:56px;flex:none;border-radius:3px;background:#E7E1DA;display:flex;align-items:center;justify-content:center;font-family:'Newsreader',serif;font-size:20px;color:#8A827A">D</div>
+              <div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:'Newsreader',serif;font-size:18px;color:#1C1B1A">The Dawn of Everything</span><span style="font-size:13px;color:#57514B">24 chapters</span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px;padding:15px 0;border-bottom:1px solid #EFE7DE">
+              <div style="width:56px;height:56px;flex:none;border-radius:3px;background:#E6DED3;display:flex;align-items:center;justify-content:center;font-family:'Newsreader',serif;font-size:20px;color:#8A827A">W</div>
+              <div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:'Newsreader',serif;font-size:18px;color:#1C1B1A">Wolf Hall</span><span style="font-size:13px;color:#B3261E">Source unavailable</span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px;padding:15px 0">
+              <div style="width:56px;height:56px;flex:none;border-radius:3px;background:#D6E0EC;display:flex;align-items:center;justify-content:center;font-family:'Newsreader',serif;font-size:20px;color:#7C8B9C">T</div>
+              <div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:'Newsreader',serif;font-size:18px;color:#1C1B1A">The Warmth of Other Suns</span><span style="font-size:13px;color:#57514B">32 chapters</span></div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#8A827A;text-align:center">Library — resume block above the rules</div>
+        </div>
+
+        <!-- 1a Player -->
+        <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="width:390px;height:844px;background:#FCF8F5;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.16);overflow:hidden;display:flex;flex-direction:column">
+          <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#1C1B1A"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+          <div style="flex:none;height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 20px">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#1C1B1A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="#1C1B1A"><circle cx="12" cy="5" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="12" cy="19" r="1.7"></circle></svg>
+          </div>
+          <div style="flex:none;padding:6px 20px 0"><image-slot id="cov1aPlay" style="width:350px;height:350px" shape="rounded" radius="3" placeholder="Drop cover art"></image-slot></div>
+          <div style="flex:none;padding:26px 24px 0;display:flex;flex-direction:column;gap:7px">
+            <span style="font-family:'Newsreader',serif;font-size:28px;line-height:1.1;color:#1C1B1A">The Wager</span>
+            <span style="font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#8A827A">Chapter 12 of 26 · A Ship's Company</span>
+          </div>
+          <div style="flex:none;padding:26px 24px 0;display:flex;flex-direction:column;gap:11px">
+            <div style="position:relative;height:4px;border-radius:2px;background:#E4DCD3"><div style="position:absolute;left:0;top:0;height:4px;width:44%;border-radius:2px;background:#3B4A5A"></div><div style="position:absolute;left:44%;top:-5px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:#3B4A5A"></div></div>
+            <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:12px;color:#57514B"><span>5:12:40</span><span>−6:33:05</span></div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:26px;padding:0 20px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="width:56px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#57514B"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5l-7 7 7 7"></path><path d="M20 5l-7 7 7 7"></path></svg><span style="font-size:11px;font-weight:600">1m</span></div>
+              <div style="width:56px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#1C1B1A"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg><span style="font-size:11px;font-weight:600">10s</span></div>
+              <div style="width:92px;height:92px;border-radius:50%;background:#3B4A5A;display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="34" height="34" fill="#FCF8F5"><rect x="7" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg></div>
+              <div style="width:56px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#1C1B1A"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg><span style="font-size:11px;font-weight:600">10s</span></div>
+              <div style="width:56px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#57514B"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5l7 7-7 7"></path><path d="M13 5l7 7-7 7"></path></svg><span style="font-size:11px;font-weight:600">1m</span></div>
+            </div>
+          </div>
+          <div style="flex:none;margin:0 24px;border-top:1px solid #E4DCD3;display:flex;align-items:stretch">
+            <div style="flex:1;padding:18px 0;display:flex;align-items:center;gap:8px;color:#1C1B1A"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"></path></svg><span style="font-size:15px;font-weight:600">Chapters</span></div>
+            <div style="width:1px;background:#E4DCD3;margin:14px 0"></div>
+            <div style="flex:1;padding:18px 0;display:flex;align-items:center;justify-content:flex-end;gap:8px;color:#1C1B1A"><span style="font-size:15px;font-weight:600">Speed</span><span style="font-family:'JetBrains Mono',monospace;font-size:15px;color:#3B4A5A">1.25×</span></div>
+          </div>
+          <div style="flex:none;height:22px"></div>
+        </div>
+        <div style="font-size:12px;color:#8A827A;text-align:center">Player — cover 350px, one circular play</div>
+        </div>
+
+        <!-- 1a inline chapters + speed -->
+        <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="width:390px;height:844px;background:#FCF8F5;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.16);overflow:hidden;display:flex;flex-direction:column">
+          <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#1C1B1A"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+          <div style="flex:none;display:flex;align-items:center;gap:14px;padding:6px 20px 18px">
+            <div style="width:64px;height:64px;flex:none;border-radius:3px;background:#E6DED3;display:flex;align-items:center;justify-content:center;font-family:'Newsreader',serif;font-size:22px;color:#8A827A">W</div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:3px;min-width:0"><span style="font-family:'Newsreader',serif;font-size:20px;color:#1C1B1A">The Wager</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#57514B">5:12:40 · 1.25×</span></div>
+            <div style="width:52px;height:52px;border-radius:50%;background:#3B4A5A;display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="20" height="20" fill="#FCF8F5"><rect x="7" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg></div>
+          </div>
+          <div style="flex:none;padding:0 24px 10px;display:flex;flex-direction:column;gap:12px;border-bottom:1px solid #E4DCD3">
+            <span style="font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#8A827A">Speed</span>
+            <div style="display:flex;gap:0;border:1px solid #E4DCD3;border-radius:4px;overflow:hidden;font-family:'JetBrains Mono',monospace;font-size:14px">
+              <span style="flex:1;text-align:center;padding:12px 0;color:#57514B">1.0</span>
+              <span style="flex:1;text-align:center;padding:12px 0;color:#57514B;border-left:1px solid #E4DCD3">1.1</span>
+              <span style="flex:1;text-align:center;padding:12px 0;background:#3B4A5A;color:#FCF8F5;border-left:1px solid #E4DCD3">1.25</span>
+              <span style="flex:1;text-align:center;padding:12px 0;color:#57514B;border-left:1px solid #E4DCD3">1.5</span>
+              <span style="flex:1;text-align:center;padding:12px 0;color:#57514B;border-left:1px solid #E4DCD3">1.75</span>
+              <span style="flex:1;text-align:center;padding:12px 0;color:#57514B;border-left:1px solid #E4DCD3">2.0</span>
+            </div>
+            <span style="font-size:13px;color:#8A827A;padding-bottom:8px">Swipe the row for 0.75× to 3×.</span>
+          </div>
+          <div style="flex:none;padding:20px 24px 8px;display:flex;align-items:baseline;justify-content:space-between"><span style="font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#8A827A">Chapters · 26</span><span style="font-size:13px;color:#3B4A5A">Jump to current</span></div>
+          <div style="flex:1;display:flex;flex-direction:column;padding:0 24px;overflow:hidden">
+            <div style="display:flex;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid #EFE7DE"><span style="font-size:16px;color:#57514B">10 · The Anchorage</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#8A827A">32:10</span></div>
+            <div style="display:flex;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid #EFE7DE"><span style="font-size:16px;color:#57514B">11 · Wager Island</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#8A827A">41:55</span></div>
+            <div style="display:flex;justify-content:space-between;gap:12px;padding:16px 0;border-bottom:1px solid #EFE7DE;border-left:3px solid #3B4A5A;padding-left:12px;margin-left:-15px;background:#F6F0E9"><span style="font-family:'Newsreader',serif;font-size:18px;color:#1C1B1A">12 · A Ship's Company</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#3B4A5A">18:02 left</span></div>
+            <div style="display:flex;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid #EFE7DE"><span style="font-size:16px;color:#57514B">13 · The Carpenter</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#8A827A">28:44</span></div>
+            <div style="display:flex;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid #EFE7DE"><span style="font-size:16px;color:#57514B">14 · Mutiny</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#8A827A">36:20</span></div>
+            <div style="display:flex;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid #EFE7DE"><span style="font-size:16px;color:#57514B">15 · The Speedwell</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#8A827A">44:07</span></div>
+            <div style="display:flex;justify-content:space-between;gap:12px;padding:14px 0"><span style="font-size:16px;color:#57514B">16 · Byron's Journal</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#8A827A">30:51</span></div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#8A827A;text-align:center">Chapters + speed, inline under a mini-player</div>
+        </div>
+
+        <!-- 1a empty + dialog -->
+        <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="width:390px;height:844px;background:#FCF8F5;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.16);overflow:hidden;display:flex;flex-direction:column">
+          <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#1C1B1A"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+          <div style="flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:14px 24px 18px"><span style="font-family:'Newsreader',serif;font-size:32px;color:#1C1B1A">Audiobooks</span></div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:0 40px;text-align:center">
+            <div style="width:104px;height:104px;border:1px solid #E4DCD3;border-radius:3px;display:flex;align-items:center;justify-content:center;background:#F6F0E9"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="#B3AAA1" stroke-width="1.4" stroke-linecap="round"><path d="M4 5h7v15H4zM13 5h7v15h-7z"></path></svg></div>
+            <span style="font-family:'Newsreader',serif;font-size:26px;color:#1C1B1A">No audiobooks yet</span>
+            <span style="font-size:15px;line-height:1.55;color:#57514B;text-wrap:pretty">Choose the folder that holds a book's audio files, or a single .m4b file. Nothing is uploaded — it all stays on this device.</span>
+            <div style="display:flex;flex-direction:column;gap:2px;margin-top:10px;width:100%;border-top:1px solid #E4DCD3">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 0;border-bottom:1px solid #E4DCD3"><span style="font-size:16px;font-weight:600;color:#1C1B1A">Add a folder</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#8A827A" stroke-width="1.8" stroke-linecap="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 0;border-bottom:1px solid #E4DCD3"><span style="font-size:16px;font-weight:600;color:#1C1B1A">Add a single file</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#8A827A" stroke-width="1.8" stroke-linecap="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+            </div>
+          </div>
+          <div style="flex:none;height:40px"></div>
+        </div>
+        <div style="font-size:12px;color:#8A827A;text-align:center">Empty state — the two add paths, spelled out</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="width:390px;height:844px;background:#FCF8F5;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.16);overflow:hidden;display:flex;flex-direction:column;position:relative">
+          <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#1C1B1A"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+          <div style="flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:14px 24px 18px"><span style="font-family:'Newsreader',serif;font-size:32px;color:#1C1B1A">Audiobooks</span><span style="font-size:15px;font-weight:600;color:#3B4A5A;padding-bottom:6px">Add</span></div>
+          <div style="flex:1;display:flex;flex-direction:column;padding:0 24px;overflow:hidden">
+            <div style="display:flex;align-items:center;gap:14px;padding:15px 0;border-bottom:1px solid #EFE7DE"><div style="width:56px;height:56px;flex:none;border-radius:3px;background:#E6DED3"></div><div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:'Newsreader',serif;font-size:18px;color:#1C1B1A">Piranesi</span><span style="font-size:13px;color:#57514B">18 chapters</span></div></div>
+            <div style="display:flex;align-items:center;gap:14px;padding:15px 0;border-bottom:1px solid #EFE7DE"><div style="width:56px;height:56px;flex:none;border-radius:3px;background:#D6E0EC"></div><div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:'Newsreader',serif;font-size:18px;color:#1C1B1A">Shōgun</span><span style="font-size:13px;color:#57514B">61 chapters</span></div></div>
+            <div style="display:flex;align-items:center;gap:14px;padding:15px 0;border-bottom:1px solid #EFE7DE"><div style="width:56px;height:56px;flex:none;border-radius:3px;background:#E7E1DA"></div><div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:'Newsreader',serif;font-size:18px;color:#1C1B1A">The Dawn of Everything</span><span style="font-size:13px;color:#57514B">24 chapters</span></div></div>
+          </div>
+          <div style="position:absolute;inset:0;background:rgba(28,27,26,.42);display:flex;align-items:center;justify-content:center;padding:28px">
+            <div style="width:100%;background:#FCF8F5;border-radius:6px;padding:26px 24px 14px;display:flex;flex-direction:column;gap:12px;box-shadow:0 18px 40px rgba(28,27,26,.3)">
+              <span style="font-family:'Newsreader',serif;font-size:23px;line-height:1.15;color:#1C1B1A">Remove “Piranesi” from your library?</span>
+              <span style="font-size:15px;line-height:1.5;color:#57514B;text-wrap:pretty">It disappears from this list only. The audio files on your device are not deleted.</span>
+              <div style="display:flex;justify-content:flex-end;gap:24px;padding-top:10px"><span style="font-size:16px;font-weight:600;color:#57514B;padding:8px 0">Cancel</span><span style="font-size:16px;font-weight:600;color:#B3261E;padding:8px 0">Remove</span></div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#8A827A;text-align:center">Long-press → remove, with the reassurance kept</div>
+        </div>
+
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ show1b }}" hint-placeholder-val="{{ true }}">
+    <div id="1b" style="display:flex;flex-direction:column;gap:20px;font-family:'Archivo',sans-serif">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:24px;padding:0 9px;border-radius:12px;background:#1C1B1A;color:#FCF8F5;font-size:12px;font-weight:600;letter-spacing:.06em">1b</span>
+        <span style="font-family:'Archivo',sans-serif;font-weight:700;font-size:26px;letter-spacing:-.02em;color:#1C1B1A">Arm's Length</span>
+      </div>
+      <p style="margin:0;max-width:400px;font-size:14px;line-height:1.55;color:#57514B;text-wrap:pretty">Built for walking. Cover runs edge to edge, type is a size bigger everywhere, one 104px play target, mono numerals you can read without stopping.</p>
+
+      <div style="display:flex;flex-wrap:wrap;gap:28px">
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="width:390px;height:844px;background:#FFFDFB;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.16);overflow:hidden;display:flex;flex-direction:column">
+          <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#121110"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+          <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:10px 22px 20px"><span style="font-size:36px;font-weight:700;letter-spacing:-.03em;color:#121110">Library</span><div style="width:44px;height:44px;border-radius:50%;background:#F0E9E2;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#121110" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></div></div>
+          <div style="flex:none;padding:0 22px 24px;display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;gap:16px;align-items:stretch">
+              <image-slot id="cov1bLib" style="width:132px;height:132px;flex:none" shape="rounded" radius="6" placeholder="Cover"></image-slot>
+              <div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;min-width:0">
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <span style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#9A9189">Keep listening</span>
+                  <span style="font-size:24px;font-weight:700;line-height:1.1;letter-spacing:-.02em;color:#121110">The Wager</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#57514B">4h 20m left</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:14px">
+                  <div style="width:62px;height:62px;border-radius:50%;background:#121110;display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="26" height="26" fill="#FFFDFB" style="margin-left:3px"><path d="M8 5l12 7-12 7z"></path></svg></div>
+                  <div style="flex:1;height:5px;border-radius:3px;background:#EBE3DB;position:relative"><div style="position:absolute;left:0;top:0;height:5px;width:44%;border-radius:3px;background:#121110"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:4px;padding:0 22px;overflow:hidden">
+            <div style="display:flex;align-items:center;gap:16px;padding:12px 0"><div style="width:64px;height:64px;flex:none;border-radius:6px;background:#E6DED3"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;font-weight:600;letter-spacing:-.01em;color:#121110">Piranesi</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#6B645D">18 ch · 8h 40m</span></div></div>
+            <div style="display:flex;align-items:center;gap:16px;padding:12px 0"><div style="width:64px;height:64px;flex:none;border-radius:6px;background:#D6E0EC"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;font-weight:600;letter-spacing:-.01em;color:#121110">Shōgun</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#6B645D">61 ch · 53h 20m</span></div></div>
+            <div style="display:flex;align-items:center;gap:16px;padding:12px 0"><div style="width:64px;height:64px;flex:none;border-radius:6px;background:#E7E1DA"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;font-weight:600;letter-spacing:-.01em;color:#121110">The Dawn of Everything</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#6B645D">24 ch · 24h 05m</span></div></div>
+            <div style="display:flex;align-items:center;gap:16px;padding:12px 0"><div style="width:64px;height:64px;flex:none;border-radius:6px;background:#F0E4E2;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#B3261E" stroke-width="2" stroke-linecap="round"><path d="M12 8v5M12 16.5v.5"></path><circle cx="12" cy="12" r="9"></circle></svg></div><div style="flex:1;display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;font-weight:600;letter-spacing:-.01em;color:#121110">Wolf Hall</span><span style="font-size:13px;font-weight:600;color:#B3261E">Source unavailable — tap to relink</span></div></div>
+            <div style="display:flex;align-items:center;gap:16px;padding:12px 0"><div style="width:64px;height:64px;flex:none;border-radius:6px;background:#E6DED3"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;font-weight:600;letter-spacing:-.01em;color:#121110">The Warmth of Other Suns</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#6B645D">32 ch · 22h 15m</span></div></div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#8A827A;text-align:center">Library — resume card carries its own play + bar</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="width:390px;height:844px;background:#FFFDFB;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.16);overflow:hidden;display:flex;flex-direction:column;position:relative">
+          <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#FFFDFB;position:absolute;top:0;left:0;right:0;z-index:2"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+          <div style="flex:none;position:relative;width:390px;height:390px"><image-slot id="cov1bPlay" style="width:390px;height:390px" shape="rect" placeholder="Drop cover art"></image-slot><div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(18,17,16,.45) 0%,rgba(18,17,16,0) 34%);pointer-events:none"></div><div style="position:absolute;top:58px;left:16px;width:44px;height:44px;border-radius:50%;background:rgba(18,17,16,.42);display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#FFFDFB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div></div>
+          <div style="flex:1;display:flex;flex-direction:column;padding:24px 22px 0">
+            <span style="font-size:27px;font-weight:700;line-height:1.08;letter-spacing:-.025em;color:#121110">The Wager</span>
+            <span style="margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:.04em;color:#6B645D">CH 12/26 — A SHIP'S COMPANY</span>
+            <div style="margin-top:22px;display:flex;flex-direction:column;gap:10px">
+              <div style="position:relative;height:8px;border-radius:4px;background:#EBE3DB"><div style="position:absolute;left:0;top:0;height:8px;width:44%;border-radius:4px;background:#121110"></div><div style="position:absolute;left:44%;top:-6px;width:20px;height:20px;margin-left:-10px;border-radius:50%;background:#121110;border:4px solid #FFFDFB;box-shadow:0 2px 6px rgba(18,17,16,.35)"></div></div>
+              <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:15px;color:#121110"><span>5:12:40</span><span style="color:#6B645D">−6:33:05</span></div>
+            </div>
+            <div style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:6px 0">
+              <div style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;color:#3F3A35"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5l-7 7 7 7"></path><path d="M20 5l-7 7 7 7"></path></svg></div>
+              <div style="width:60px;height:60px;display:flex;align-items:center;justify-content:center;color:#121110"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div>
+              <div style="width:104px;height:104px;border-radius:50%;background:#121110;display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="40" height="40" fill="#FFFDFB"><rect x="7" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg></div>
+              <div style="width:60px;height:60px;display:flex;align-items:center;justify-content:center;color:#121110"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+              <div style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;color:#3F3A35"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5l7 7-7 7"></path><path d="M13 5l7 7-7 7"></path></svg></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.04em;color:#9A9189;padding-bottom:8px"><span style="width:52px;text-align:center">1M</span><span style="width:60px;text-align:center">10S</span><span style="width:104px"></span><span style="width:60px;text-align:center">10S</span><span style="width:52px;text-align:center">1M</span></div>
+          </div>
+          <div style="flex:none;display:flex;border-top:1px solid #EBE3DB">
+            <div style="flex:1;padding:22px 0;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:17px;font-weight:600;color:#121110">Chapters</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#9A9189">12/26</span></div>
+            <div style="width:1px;background:#EBE3DB"></div>
+            <div style="flex:1;padding:22px 0;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:500;color:#121110">1.25×</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#9A9189">SPEED</span></div>
+          </div>
+          <div style="flex:none;height:20px"></div>
+        </div>
+        <div style="font-size:12px;color:#8A827A;text-align:center">Player — full-width cover, 104px play</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="width:390px;height:844px;background:#FFFDFB;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.16);overflow:hidden;display:flex;flex-direction:column">
+          <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#121110"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+          <div style="flex:none;display:flex;align-items:center;gap:14px;padding:6px 22px 18px;border-bottom:1px solid #EBE3DB">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#121110" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M6 15l6-6 6 6"></path></svg>
+            <div style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:19px;font-weight:700;letter-spacing:-.02em;color:#121110">Chapters</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6B645D">THE WAGER · 26 TOTAL</span></div>
+            <div style="width:52px;height:52px;border-radius:50%;background:#121110;display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="20" height="20" fill="#FFFDFB"><rect x="7" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg></div>
+          </div>
+          <div style="flex:none;padding:18px 22px;display:flex;gap:10px;overflow:hidden;border-bottom:1px solid #EBE3DB;font-family:'JetBrains Mono',monospace;font-size:15px">
+            <span style="flex:none;padding:11px 15px;border-radius:6px;background:#F0E9E2;color:#3F3A35">1.0</span>
+            <span style="flex:none;padding:11px 15px;border-radius:6px;background:#F0E9E2;color:#3F3A35">1.1</span>
+            <span style="flex:none;padding:11px 15px;border-radius:6px;background:#121110;color:#FFFDFB">1.25</span>
+            <span style="flex:none;padding:11px 15px;border-radius:6px;background:#F0E9E2;color:#3F3A35">1.5</span>
+            <span style="flex:none;padding:11px 15px;border-radius:6px;background:#F0E9E2;color:#3F3A35">1.75</span>
+            <span style="flex:none;padding:11px 15px;border-radius:6px;background:#F0E9E2;color:#3F3A35">2.0</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+            <div style="display:flex;align-items:center;gap:14px;padding:16px 22px"><span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#9A9189;width:26px">10</span><span style="flex:1;font-size:18px;font-weight:500;color:#3F3A35">The Anchorage</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#9A9189">32:10</span></div>
+            <div style="display:flex;align-items:center;gap:14px;padding:16px 22px"><span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#9A9189;width:26px">11</span><span style="flex:1;font-size:18px;font-weight:500;color:#3F3A35">Wager Island</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#9A9189">41:55</span></div>
+            <div style="display:flex;align-items:center;gap:14px;padding:18px 22px;background:#121110"><span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#9A9189;width:26px">12</span><span style="flex:1;font-size:19px;font-weight:700;letter-spacing:-.01em;color:#FFFDFB">A Ship's Company</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#CFC7BF">18:02</span></div>
+            <div style="display:flex;align-items:center;gap:14px;padding:16px 22px"><span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#9A9189;width:26px">13</span><span style="flex:1;font-size:18px;font-weight:500;color:#3F3A35">The Carpenter</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#9A9189">28:44</span></div>
+            <div style="display:flex;align-items:center;gap:14px;padding:16px 22px"><span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#9A9189;width:26px">14</span><span style="flex:1;font-size:18px;font-weight:500;color:#3F3A35">Mutiny</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#9A9189">36:20</span></div>
+            <div style="display:flex;align-items:center;gap:14px;padding:16px 22px"><span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#9A9189;width:26px">15</span><span style="flex:1;font-size:18px;font-weight:500;color:#3F3A35">The Speedwell</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#9A9189">44:07</span></div>
+            <div style="display:flex;align-items:center;gap:14px;padding:16px 22px"><span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#9A9189;width:26px">16</span><span style="flex:1;font-size:18px;font-weight:500;color:#3F3A35">Byron's Journal</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#9A9189">30:51</span></div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#8A827A;text-align:center">Chapters sheet with the speed row on top</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="width:390px;height:844px;background:#FFFDFB;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.16);overflow:hidden;display:flex;flex-direction:column;position:relative">
+          <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#121110"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+          <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:10px 22px 20px"><span style="font-size:36px;font-weight:700;letter-spacing:-.03em;color:#121110">Library</span></div>
+          <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:18px;padding:0 30px 60px">
+            <span style="font-size:30px;font-weight:700;line-height:1.1;letter-spacing:-.03em;color:#121110">Nothing here yet.</span>
+            <span style="font-size:17px;line-height:1.5;color:#57514B;text-wrap:pretty">Point the app at a folder of audio files or a single .m4b, and it appears here with its chapters.</span>
+            <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px">
+              <div style="display:flex;align-items:center;gap:14px;padding:20px;border-radius:10px;background:#121110"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#FFFDFB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h6l2 2h10v10H3z"></path></svg><span style="font-size:18px;font-weight:600;color:#FFFDFB">Choose a folder</span></div>
+              <div style="display:flex;align-items:center;gap:14px;padding:20px;border-radius:10px;background:#F0E9E2"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#121110" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6v18h12V7z"></path><path d="M14 3v4h4"></path></svg><span style="font-size:18px;font-weight:600;color:#121110">Choose a single .m4b</span></div>
+            </div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.04em;color:#9A9189;margin-top:6px">STAYS ON THIS DEVICE · NO ACCOUNT</span>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#8A827A;text-align:center">Empty state — the add paths are the whole screen</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="width:390px;height:844px;background:#FFFDFB;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.16);overflow:hidden;display:flex;flex-direction:column;position:relative">
+          <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#121110"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+          <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:10px 22px 20px"><span style="font-size:36px;font-weight:700;letter-spacing:-.03em;color:#121110">Library</span></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:4px;padding:0 22px;overflow:hidden">
+            <div style="display:flex;align-items:center;gap:16px;padding:12px 0"><div style="width:64px;height:64px;flex:none;border-radius:6px;background:#E6DED3"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;font-weight:600;color:#121110">Piranesi</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#6B645D">18 ch · 8h 40m</span></div></div>
+            <div style="display:flex;align-items:center;gap:16px;padding:12px 0"><div style="width:64px;height:64px;flex:none;border-radius:6px;background:#D6E0EC"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;font-weight:600;color:#121110">Shōgun</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#6B645D">61 ch · 53h 20m</span></div></div>
+          </div>
+          <div style="position:absolute;inset:0;background:rgba(18,17,16,.5);display:flex;align-items:flex-end">
+            <div style="width:100%;background:#FFFDFB;border-radius:22px 22px 44px 44px;padding:28px 24px 30px;display:flex;flex-direction:column;gap:12px">
+              <span style="font-size:24px;font-weight:700;line-height:1.15;letter-spacing:-.02em;color:#121110">Remove Piranesi?</span>
+              <span style="font-size:16px;line-height:1.5;color:#57514B;text-wrap:pretty">Removes the book from your library. Your files stay exactly where they are.</span>
+              <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+                <div style="padding:18px;border-radius:10px;background:#B3261E;text-align:center;font-size:18px;font-weight:600;color:#FFFDFB">Remove from library</div>
+                <div style="padding:18px;border-radius:10px;background:#F0E9E2;text-align:center;font-size:18px;font-weight:600;color:#121110">Keep it</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#8A827A;text-align:center">Remove — thumb-reachable sheet, not a mid-screen box</div>
+        </div>
+
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ show1c }}" hint-placeholder-val="{{ true }}">
+    <div id="1c" style="display:flex;flex-direction:column;gap:20px;font-family:'Figtree',sans-serif">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:24px;padding:0 9px;border-radius:12px;background:#1C1B1A;color:#FCF8F5;font-size:12px;font-weight:600;letter-spacing:.06em">1c</span>
+        <span style="font-family:'Instrument Serif',serif;font-size:28px;color:#1C1B1A">Slate Panel</span>
+      </div>
+      <p style="margin:0;max-width:400px;font-size:14px;line-height:1.55;color:#57514B;text-wrap:pretty">Closest to your existing theme. Cover floats on warm paper, every control sits on one raised panel, slate does the accent work.</p>
+
+      <div style="display:flex;flex-wrap:wrap;gap:28px">
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="width:390px;height:844px;background:#EFE8E1;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.16);overflow:hidden;display:flex;flex-direction:column">
+          <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#1C1B1A"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+          <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:12px 22px 18px"><span style="font-family:'Instrument Serif',serif;font-size:34px;color:#1C1B1A">Audiobooks</span><span style="display:inline-flex;align-items:center;gap:6px;font-size:15px;font-weight:600;color:#3B4A5A"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Add</span></div>
+          <div style="flex:none;margin:0 18px;padding:16px;border-radius:20px;background:#FCFAF8;box-shadow:0 6px 18px rgba(28,27,26,.08);display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;gap:14px;align-items:center">
+              <image-slot id="cov1cLib" style="width:84px;height:84px;flex:none" shape="rounded" radius="14" placeholder="Cover"></image-slot>
+              <div style="flex:1;display:flex;flex-direction:column;gap:4px;min-width:0">
+                <span style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8A827A">Now playing</span>
+                <span style="font-size:20px;font-weight:600;line-height:1.15;color:#1C1B1A">The Wager</span>
+                <span style="font-size:13px;color:#57514B">Ch 12 · 18m left in chapter</span>
+              </div>
+              <div style="width:56px;height:56px;border-radius:50%;background:#3B4A5A;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 4px 12px rgba(59,74,90,.35)"><svg viewBox="0 0 24 24" width="22" height="22" fill="#FCF8F5"><rect x="7" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg></div>
+            </div>
+            <div style="height:6px;border-radius:3px;background:#E4DCD3;position:relative"><div style="position:absolute;left:0;top:0;height:6px;width:44%;border-radius:3px;background:#3B4A5A"></div></div>
+          </div>
+          <div style="flex:none;padding:22px 26px 10px;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8A827A">Your books</div>
+          <div style="flex:1;margin:0 18px 20px;border-radius:20px;background:#FCFAF8;box-shadow:0 6px 18px rgba(28,27,26,.06);padding:6px 0;display:flex;flex-direction:column;overflow:hidden">
+            <div style="display:flex;align-items:center;gap:14px;padding:13px 16px"><div style="width:54px;height:54px;flex:none;border-radius:12px;background:#E6DED3"></div><div style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;font-weight:600;color:#1C1B1A">Piranesi</span><span style="font-size:13px;color:#57514B">18 chapters</span></div><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#B3AAA1" stroke-width="2" stroke-linecap="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+            <div style="height:1px;background:#F0EAE4;margin:0 16px"></div>
+            <div style="display:flex;align-items:center;gap:14px;padding:13px 16px"><div style="width:54px;height:54px;flex:none;border-radius:12px;background:#D6E0EC"></div><div style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;font-weight:600;color:#1C1B1A">Shōgun</span><span style="font-size:13px;color:#57514B">61 chapters</span></div><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#B3AAA1" stroke-width="2" stroke-linecap="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+            <div style="height:1px;background:#F0EAE4;margin:0 16px"></div>
+            <div style="display:flex;align-items:center;gap:14px;padding:13px 16px"><div style="width:54px;height:54px;flex:none;border-radius:12px;background:#E7E1DA"></div><div style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;font-weight:600;color:#1C1B1A">The Dawn of Everything</span><span style="font-size:13px;color:#57514B">24 chapters</span></div><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#B3AAA1" stroke-width="2" stroke-linecap="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+            <div style="height:1px;background:#F0EAE4;margin:0 16px"></div>
+            <div style="display:flex;align-items:center;gap:14px;padding:13px 16px"><div style="width:54px;height:54px;flex:none;border-radius:12px;background:#F0E4E2"></div><div style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;font-weight:600;color:#1C1B1A">Wolf Hall</span><span style="font-size:13px;font-weight:600;color:#B3261E">Source unavailable</span></div><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#B3AAA1" stroke-width="2" stroke-linecap="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+            <div style="height:1px;background:#F0EAE4;margin:0 16px"></div>
+            <div style="display:flex;align-items:center;gap:14px;padding:13px 16px"><div style="width:54px;height:54px;flex:none;border-radius:12px;background:#E6DED3"></div><div style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;font-weight:600;color:#1C1B1A">The Warmth of Other Suns</span><span style="font-size:13px;color:#57514B">32 chapters</span></div><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#B3AAA1" stroke-width="2" stroke-linecap="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#8A827A;text-align:center">Library — resume card, then one grouped list</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="width:390px;height:844px;background:#EFE8E1;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.16);overflow:hidden;display:flex;flex-direction:column">
+          <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#1C1B1A"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+          <div style="flex:none;height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 20px"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#1C1B1A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg><span style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8A827A">Now playing</span><svg viewBox="0 0 24 24" width="22" height="22" fill="#1C1B1A"><circle cx="12" cy="5" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="12" cy="19" r="1.7"></circle></svg></div>
+          <div style="flex:none;display:flex;justify-content:center;padding:8px 0 22px"><image-slot id="cov1cPlay" style="width:326px;height:326px;box-shadow:0 18px 36px rgba(28,27,26,.22)" shape="rounded" radius="22" placeholder="Drop cover art"></image-slot></div>
+          <div style="flex:1;background:#FCFAF8;border-radius:30px 30px 0 0;box-shadow:0 -6px 24px rgba(28,27,26,.08);padding:24px 22px 0;display:flex;flex-direction:column">
+            <span style="font-size:24px;font-weight:600;line-height:1.15;color:#1C1B1A">The Wager</span>
+            <span style="margin-top:5px;font-size:14px;color:#57514B">Chapter 12 of 26 · A Ship's Company</span>
+            <div style="margin-top:20px;display:flex;flex-direction:column;gap:9px">
+              <div style="position:relative;height:6px;border-radius:3px;background:#E4DCD3"><div style="position:absolute;left:0;top:0;height:6px;width:44%;border-radius:3px;background:#3B4A5A"></div><div style="position:absolute;left:44%;top:-6px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:#3B4A5A;box-shadow:0 2px 6px rgba(59,74,90,.4)"></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;font-variant-numeric:tabular-nums;color:#57514B"><span>5:12:40</span><span>−6:33:05</span></div>
+            </div>
+            <div style="margin-top:auto;display:flex;align-items:center;justify-content:space-between;padding-bottom:18px">
+              <div style="width:54px;display:flex;flex-direction:column;align-items:center;gap:3px;color:#57514B"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5l-8 7 8 7"></path><path d="M6 5v14"></path></svg><span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase">Ch</span></div>
+              <div style="width:54px;display:flex;flex-direction:column;align-items:center;gap:3px;color:#1C1B1A"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg><span style="font-size:10px;font-weight:700;letter-spacing:.08em">10s</span></div>
+              <div style="width:88px;height:88px;border-radius:50%;background:#3B4A5A;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 8px 22px rgba(59,74,90,.38)"><svg viewBox="0 0 24 24" width="34" height="34" fill="#FCF8F5"><rect x="7" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg></div>
+              <div style="width:54px;display:flex;flex-direction:column;align-items:center;gap:3px;color:#1C1B1A"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg><span style="font-size:10px;font-weight:700;letter-spacing:.08em">10s</span></div>
+              <div style="width:54px;display:flex;flex-direction:column;align-items:center;gap:3px;color:#57514B"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5l8 7-8 7"></path><path d="M18 5v14"></path></svg><span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase">Ch</span></div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;border-top:1px solid #F0EAE4;padding:16px 0 20px">
+              <span style="display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:600;color:#1C1B1A"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"></path></svg>Chapters</span>
+              <div style="display:flex;border:1px solid #E4DCD3;border-radius:9px;overflow:hidden;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums">
+                <span style="padding:9px 12px;color:#57514B">1.0</span>
+                <span style="padding:9px 12px;background:#3B4A5A;color:#FCF8F5">1.25</span>
+                <span style="padding:9px 12px;color:#57514B">1.5</span>
+                <span style="padding:9px 12px;color:#57514B;border-left:1px solid #E4DCD3">···</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#8A827A;text-align:center">Player — controls on one raised panel</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="width:390px;height:844px;background:#EFE8E1;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.16);overflow:hidden;display:flex;flex-direction:column">
+          <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#1C1B1A"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+          <div style="flex:none;display:flex;align-items:center;gap:14px;padding:6px 20px 18px">
+            <div style="width:60px;height:60px;flex:none;border-radius:14px;background:#E6DED3"></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:18px;font-weight:600;color:#1C1B1A">The Wager</span><span style="font-size:13px;color:#57514B">Ch 12 · 5:12:40</span></div>
+            <div style="width:50px;height:50px;border-radius:50%;background:#3B4A5A;display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="19" height="19" fill="#FCF8F5"><rect x="7" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg></div>
+          </div>
+          <div style="flex:1;margin:0 18px 20px;background:#FCFAF8;border-radius:24px;box-shadow:0 8px 24px rgba(28,27,26,.08);display:flex;flex-direction:column;overflow:hidden">
+            <div style="flex:none;padding:20px 20px 14px;display:flex;flex-direction:column;gap:12px;border-bottom:1px solid #F0EAE4">
+              <span style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8A827A">Playback speed</span>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:14px">
+                <div style="width:52px;height:52px;border-radius:14px;background:#EFE8E1;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#1C1B1A" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"></path></svg></div>
+                <span style="font-family:'Instrument Serif',serif;font-size:38px;line-height:1;color:#1C1B1A">1.25×</span>
+                <div style="width:52px;height:52px;border-radius:14px;background:#EFE8E1;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#1C1B1A" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></div>
+              </div>
+              <span style="font-size:13px;color:#8A827A">Steps through 0.75× – 3×. Held per book.</span>
+            </div>
+            <div style="flex:none;display:flex;align-items:baseline;justify-content:space-between;padding:18px 20px 10px"><span style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8A827A">Chapters</span><span style="font-size:13px;font-weight:600;color:#3B4A5A">12 of 26</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+              <div style="display:flex;align-items:center;gap:12px;padding:13px 20px"><span style="width:24px;font-size:13px;font-variant-numeric:tabular-nums;color:#B3AAA1">10</span><span style="flex:1;font-size:16px;color:#57514B">The Anchorage</span><span style="font-size:13px;color:#B3AAA1">32:10</span></div>
+              <div style="display:flex;align-items:center;gap:12px;padding:13px 20px"><span style="width:24px;font-size:13px;font-variant-numeric:tabular-nums;color:#B3AAA1">11</span><span style="flex:1;font-size:16px;color:#57514B">Wager Island</span><span style="font-size:13px;color:#B3AAA1">41:55</span></div>
+              <div style="display:flex;align-items:center;gap:12px;padding:15px 20px;margin:0 10px;border-radius:14px;background:#D6E0EC"><span style="width:24px;font-size:13px;font-variant-numeric:tabular-nums;color:#3B4A5A">12</span><span style="flex:1;font-size:17px;font-weight:600;color:#16202B">A Ship's Company</span><svg viewBox="0 0 24 24" width="16" height="16" fill="#3B4A5A"><path d="M8 5l12 7-12 7z"></path></svg></div>
+              <div style="display:flex;align-items:center;gap:12px;padding:13px 20px"><span style="width:24px;font-size:13px;font-variant-numeric:tabular-nums;color:#B3AAA1">13</span><span style="flex:1;font-size:16px;color:#57514B">The Carpenter</span><span style="font-size:13px;color:#B3AAA1">28:44</span></div>
+              <div style="display:flex;align-items:center;gap:12px;padding:13px 20px"><span style="width:24px;font-size:13px;font-variant-numeric:tabular-nums;color:#B3AAA1">14</span><span style="flex:1;font-size:16px;color:#57514B">Mutiny</span><span style="font-size:13px;color:#B3AAA1">36:20</span></div>
+              <div style="display:flex;align-items:center;gap:12px;padding:13px 20px"><span style="width:24px;font-size:13px;font-variant-numeric:tabular-nums;color:#B3AAA1">15</span><span style="flex:1;font-size:16px;color:#57514B">The Speedwell</span><span style="font-size:13px;color:#B3AAA1">44:07</span></div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#8A827A;text-align:center">Speed as a stepper, chapters below — same panel</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="width:390px;height:844px;background:#EFE8E1;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.16);overflow:hidden;display:flex;flex-direction:column">
+          <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#1C1B1A"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+          <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:12px 22px 18px"><span style="font-family:'Instrument Serif',serif;font-size:34px;color:#1C1B1A">Audiobooks</span></div>
+          <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 18px 70px">
+            <div style="background:#FCFAF8;border-radius:24px;box-shadow:0 8px 24px rgba(28,27,26,.08);padding:32px 24px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center">
+              <div style="width:76px;height:76px;border-radius:20px;background:#EFE8E1;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#8A827A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h6l2 2h10v10H3z"></path></svg></div>
+              <span style="font-family:'Instrument Serif',serif;font-size:27px;line-height:1.15;color:#1C1B1A">Your library is empty</span>
+              <span style="font-size:15px;line-height:1.55;color:#57514B;text-wrap:pretty">Add the folder that holds a book's audio files, or a single .m4b. Chapters are read automatically.</span>
+              <div style="display:flex;flex-direction:column;gap:10px;width:100%;margin-top:8px">
+                <div style="padding:17px;border-radius:14px;background:#3B4A5A;text-align:center;font-size:17px;font-weight:600;color:#FCF8F5">Add a folder</div>
+                <div style="padding:17px;border-radius:14px;background:#EFE8E1;text-align:center;font-size:17px;font-weight:600;color:#1C1B1A">Add a single file</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#8A827A;text-align:center">Empty state on the same panel language</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="width:390px;height:844px;background:#EFE8E1;border-radius:44px;box-shadow:0 22px 50px rgba(28,27,26,.16);overflow:hidden;display:flex;flex-direction:column;position:relative">
+          <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#1C1B1A"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+          <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:12px 22px 18px"><span style="font-family:'Instrument Serif',serif;font-size:34px;color:#1C1B1A">Audiobooks</span></div>
+          <div style="flex:1;margin:0 18px 20px;border-radius:20px;background:#FCFAF8;padding:6px 0;display:flex;flex-direction:column;overflow:hidden">
+            <div style="display:flex;align-items:center;gap:14px;padding:13px 16px"><div style="width:54px;height:54px;flex:none;border-radius:12px;background:#E6DED3"></div><div style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;font-weight:600;color:#1C1B1A">Piranesi</span><span style="font-size:13px;color:#57514B">18 chapters</span></div></div>
+            <div style="display:flex;align-items:center;gap:14px;padding:13px 16px"><div style="width:54px;height:54px;flex:none;border-radius:12px;background:#D6E0EC"></div><div style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;font-weight:600;color:#1C1B1A">Shōgun</span><span style="font-size:13px;color:#57514B">61 chapters</span></div></div>
+          </div>
+          <div style="position:absolute;inset:0;background:rgba(28,27,26,.45);display:flex;align-items:flex-end;padding:0 0 18px">
+            <div style="margin:0 18px;background:#FCFAF8;border-radius:24px;padding:24px 22px;display:flex;flex-direction:column;gap:10px;box-shadow:0 16px 40px rgba(28,27,26,.28)">
+              <div style="display:flex;align-items:center;gap:12px"><div style="width:44px;height:44px;border-radius:12px;background:#E6DED3;flex:none"></div><span style="font-size:20px;font-weight:600;color:#1C1B1A">Remove Piranesi?</span></div>
+              <span style="font-size:15px;line-height:1.5;color:#57514B;text-wrap:pretty">It leaves your library. The audio files on your device are untouched, and you can add it back any time.</span>
+              <div style="display:flex;gap:10px;margin-top:12px">
+                <div style="flex:1;padding:16px;border-radius:14px;background:#EFE8E1;text-align:center;font-size:16px;font-weight:600;color:#1C1B1A">Cancel</div>
+                <div style="flex:1;padding:16px;border-radius:14px;background:#B3261E;text-align:center;font-size:16px;font-weight:600;color:#FFFFFF">Remove</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#8A827A;text-align:center">Remove — cover shown so it's clear which book</div>
+        </div>
+
+      </div>
+    </div>
+    </sc-if>
+
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:24px;padding:40px 80px 96px;font-family:'Public Sans',sans-serif">
+  <div style="display:flex;align-items:baseline;gap:12px">
+    <span style="display:inline-flex;align-items:center;justify-content:center;height:24px;padding:0 10px;border-radius:12px;background:#E4DCD3;color:#57514B;font-size:12px;font-weight:600;letter-spacing:.06em">today</span>
+    <span style="font-family:'Newsreader',serif;font-size:24px;color:#57514B">The current build, for reference</span>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:28px">
+    <div style="width:390px;height:844px;background:#FCF8F5;border-radius:44px;box-shadow:0 10px 24px rgba(28,27,26,.1);overflow:hidden;display:flex;flex-direction:column;opacity:.92;font-family:system-ui,sans-serif">
+      <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#1C1B1A"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+      <div style="flex:none;height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 16px"><span style="font-size:24px;font-weight:600;color:#1C1B1A">Audiobooks</span><span style="font-size:14px;font-weight:500;color:#3B4A5A;padding:10px 12px">Add</span></div>
+      <div style="flex:1;display:flex;flex-direction:column;padding:8px 0;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:16px;padding:16px 20px"><div style="width:56px;height:56px;flex:none;border-radius:4px;background:#E7E1DA"></div><div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:18px;color:#1C1B1A">The Wager</span><span style="font-size:15px;color:#4A4640">26 chapters</span></div></div>
+        <div style="height:1px;background:#E7E1DA"></div>
+        <div style="display:flex;align-items:center;gap:16px;padding:16px 20px"><div style="width:56px;height:56px;flex:none;border-radius:4px;background:#E7E1DA"></div><div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:18px;color:#1C1B1A">Piranesi</span><span style="font-size:15px;color:#4A4640">18 chapters</span></div></div>
+        <div style="height:1px;background:#E7E1DA"></div>
+        <div style="display:flex;align-items:center;gap:16px;padding:16px 20px"><div style="width:56px;height:56px;flex:none;border-radius:4px;background:#E7E1DA"></div><div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:18px;color:#1C1B1A">Shōgun</span><span style="font-size:15px;color:#4A4640">61 chapters</span></div></div>
+        <div style="height:1px;background:#E7E1DA"></div>
+      </div>
+    </div>
+    <div style="width:390px;height:844px;background:#FCF8F5;border-radius:44px;box-shadow:0 10px 24px rgba(28,27,26,.1);overflow:hidden;display:flex;flex-direction:column;opacity:.92;font-family:system-ui,sans-serif">
+      <div style="flex:none;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:13px;font-weight:600;color:#1C1B1A"><span>9:41</span><span style="letter-spacing:.08em">▮▮▮ ⌁</span></div>
+      <div style="flex:none;height:64px;display:flex;align-items:center;padding:0 16px;font-size:24px;font-weight:600;color:#1C1B1A">The Wager</div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 24px">
+        <div style="width:200px;height:200px;border-radius:4px;background:#E7E1DA"></div>
+        <div style="height:24px"></div>
+        <span style="font-size:18px;color:#1C1B1A;text-align:center">A Ship's Company</span>
+        <span style="font-size:15px;color:#4A4640;margin-top:4px">Chapter 12 of 26</span>
+        <div style="height:24px"></div>
+        <div style="width:100%;height:4px;border-radius:2px;background:#D6E0EC;position:relative"><div style="position:absolute;left:0;top:0;width:44%;height:4px;border-radius:2px;background:#3B4A5A"></div><div style="position:absolute;left:44%;top:-8px;width:20px;height:20px;margin-left:-10px;border-radius:50%;background:#3B4A5A"></div></div>
+        <div style="width:100%;display:flex;justify-content:space-between;margin-top:10px;font-size:15px;color:#4A4640"><span>5:12:40</span><span>6:33:05</span></div>
+        <div style="height:24px"></div>
+        <div style="width:100%;display:flex;justify-content:space-evenly;align-items:center">
+          <span style="min-width:64px;height:56px;border:1px solid #7C7770;border-radius:28px;display:flex;align-items:center;justify-content:center;font-size:15px;color:#3B4A5A">-1m</span>
+          <span style="min-width:64px;height:56px;border:1px solid #7C7770;border-radius:28px;display:flex;align-items:center;justify-content:center;font-size:15px;color:#3B4A5A">-10s</span>
+          <span style="width:88px;height:88px;border-radius:44px;background:#3B4A5A;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600">Pause</span>
+          <span style="min-width:64px;height:56px;border:1px solid #7C7770;border-radius:28px;display:flex;align-items:center;justify-content:center;font-size:15px;color:#3B4A5A">+10s</span>
+          <span style="min-width:64px;height:56px;border:1px solid #7C7770;border-radius:28px;display:flex;align-items:center;justify-content:center;font-size:15px;color:#3B4A5A">+1m</span>
+        </div>
+        <div style="height:20px"></div>
+        <div style="width:100%;display:flex;justify-content:space-evenly"><span style="height:40px;padding:0 18px;border:1px solid #7C7770;border-radius:20px;display:flex;align-items:center;font-size:14px;color:#3B4A5A">Previous Chapter</span><span style="height:40px;padding:0 18px;border:1px solid #7C7770;border-radius:20px;display:flex;align-items:center;font-size:14px;color:#3B4A5A">Next Chapter</span></div>
+        <div style="height:16px"></div>
+        <span style="height:40px;padding:0 18px;border:1px solid #7C7770;border-radius:20px;display:flex;align-items:center;font-size:14px;color:#3B4A5A">Speed: 1.25x</span>
+        <div style="height:24px"></div>
+        <span style="font-size:14px;font-weight:500;color:#3B4A5A">Back to library</span>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showOnly&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;All&quot;,&quot;2a Arm's Length — dark&quot;,&quot;1a Paper Edition&quot;,&quot;1b Arm's Length&quot;,&quot;1c Slate Panel&quot;],&quot;default&quot;:&quot;All&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Review&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const only = this.props.showOnly ?? "All";
+    const all = only === "All";
+    return {
+      show2a: all || only === "2a Arm's Length — dark",
+      show1a: all || only === "1a Paper Edition",
+      show1b: all || only === "1b Arm's Length",
+      show1c: all || only === "1c Slate Panel",
+    };
+  }
+}
+</script>
+</body>
+</html>
