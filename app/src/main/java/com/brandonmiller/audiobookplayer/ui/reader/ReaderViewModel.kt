@@ -242,8 +242,12 @@ class ReaderViewModel(
         }
     }
 
-    fun jumpToBlock(blockIndex: Int) {
+    fun jumpToBlock(blockIndex: Int, alsoSeek: Boolean = true) {
         _state.update { it.copy(scrollToBlock = blockIndex) }
+        if (alsoSeek && _state.value.readAlongMap != null) {
+            val previous = _state.value.playbackPositionMs ?: 0L
+            seekFromReaderPosition(blockIndex, previous)
+        }
         saveReadingPosition(blockIndex)
     }
 
@@ -255,22 +259,31 @@ class ReaderViewModel(
         return book.blockIndexForAbsoluteChars(chars)
     }
 
-    fun seekFromReaderPosition(firstVisibleBlock: Int, previousPositionMs: Long) {
-        val map = _state.value.readAlongMap ?: return
-        val book = _state.value.book ?: return
-        val ctrl = controller ?: return
+    private var lastSeekPreviousMs = 0L
+
+    fun seekFromReaderPosition(firstVisibleBlock: Int, previousPositionMs: Long): Boolean {
+        val map = _state.value.readAlongMap ?: return false
+        val book = _state.value.book ?: return false
+        val ctrl = controller ?: return false
 
         val position = book.positionOf(firstVisibleBlock)
         val chars = position.charOffset + book.absoluteCharsAt(firstVisibleBlock)
         val newPositionMs = map.msForChars(chars)
 
         val delta = kotlin.math.abs(newPositionMs - previousPositionMs)
-        if (delta < SEEK_DEAD_ZONE_MS) return
+        if (delta < SEEK_DEAD_ZONE_MS) return false
 
         val wasPlaying = ctrl.isPlaying
         ctrl.seekTo(newPositionMs)
+        lastSeekPreviousMs = previousPositionMs
         // D8: seek does not change transport state
         if (!wasPlaying && ctrl.isPlaying) ctrl.pause()
+        return true
+    }
+
+    fun undoLastSeek() {
+        val ctrl = controller ?: return
+        ctrl.seekTo(lastSeekPreviousMs)
     }
 
     companion object {

@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.material3.SnackbarResult
 import com.brandonmiller.audiobookplayer.R
 import com.brandonmiller.audiobookplayer.data.ReadingSettings
 import com.brandonmiller.audiobookplayer.ebook.Block
@@ -141,7 +142,7 @@ fun ReaderScreen(
                     lastScrollTime = System.currentTimeMillis()
                 } else if (wasScrolling && state.readAlongMap != null) {
                     val previous = state.playbackPositionMs ?: 0L
-                    viewModel.seekFromReaderPosition(listState.firstVisibleItemIndex, previous)
+                    val didSeek = viewModel.seekFromReaderPosition(listState.firstVisibleItemIndex, previous)
                     wasScrolling = false
                 }
                 if (!isScrolling) {

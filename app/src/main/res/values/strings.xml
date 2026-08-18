@@ -81,6 +81,8 @@
     <string name="reader_search_hint">Search this ebook</string>
     <string name="reader_search_prompt">Type a word or a phrase to find it in this ebook.</string>
     <string name="reader_search_empty">No matches.</string>
+    <string name="reader_seek_undo">Scrolled the audio. Undo?</string>
+    <string name="reader_undo">Undo</string>
     <string name="reader_settings">Reading settings</string>
     <string name="reader_settings_close">Close settings</string>
     <string name="reader_change">Change ebook</string>
