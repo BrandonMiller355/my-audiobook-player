@@ -83,12 +83,12 @@ Also pure Kotlin and separately testable (D3).
 
 Reversing `add-ebook-companion` design D8, which had the reader deliberately ignore playback position.
 
-- [ ] 5.1 Have `ReaderViewModel` follow playback position as well as play/pause, sampling at the modest
+- [x] 5.1 Have `ReaderViewModel` follow playback position as well as play/pause, sampling at the modest
       rate D7 settles on rather than per frame
-- [ ] 5.2 Build the map when both the ebook and the book's chapters are available, and expose read-along
+- [x] 5.2 Build the map when both the ebook and the book's chapters are available, and expose read-along
       as unavailable with a reason when either is missing (D10) — including a book whose audio is one
       chapter spanning the whole file
-- [ ] 5.3 Drive the scroll from the sampled position: glide toward the fractional target when it is on
+- [x] 5.3 Drive the scroll from the sampled position: glide toward the fractional target when it is on
       or near screen, jump with `scrollToItem` when it is far (D7)
 - [ ] 5.4 Compute the fractional target to sub-block precision from `layoutInfo`, rather than to the
       first visible block (D6)
@@ -97,14 +97,14 @@ Reversing `add-ebook-companion` design D8, which had the reader deliberately ign
 
 ## 6. The audio follows the reader
 
-- [ ] 6.1 Add the user-input gate from D4 — a `NestedScrollConnection` using `NestedScrollSource.UserInput`
+- [x] 6.1 Add the user-input gate from D4 — a `NestedScrollConnection` using `NestedScrollSource.UserInput`
       that marks the scroll as user-initiated. **This is the correctness-critical task in the change**
-- [ ] 6.2 Move the existing position-save hook behind the same gate, fixing the latent misfire it has
+- [x] 6.2 Move the existing position-save hook behind the same gate, fixing the latent misfire it has
       today
-- [ ] 6.3 On settle with the gate set, map the reader's position back to milliseconds and seek through
+- [x] 6.3 On settle with the gate set, map the reader's position back to milliseconds and seek through
       the `MediaController` the reader already holds
-- [ ] 6.4 Apply the dead zone: skip the seek when the implied change is under the threshold (D5)
-- [ ] 6.5 Leave the transport state alone across the seek — paused stays paused (D8)
+- [x] 6.4 Apply the dead zone: skip the seek when the implied change is under the threshold (D5)
+- [x] 6.5 Leave the transport state alone across the seek — paused stays paused (D8)
 - [ ] 6.6 Offer undo through the existing `SnackbarHost`, restoring the position captured before the
       seek (D5)
 - [ ] 6.7 Route table-of-contents jumps and search-result jumps through the same path, so one rule
