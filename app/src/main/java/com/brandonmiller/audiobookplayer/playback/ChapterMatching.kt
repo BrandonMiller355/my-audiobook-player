@@ -8,6 +8,20 @@ import kotlin.math.sqrt
 data class AudioChapter(val title: String, val span: ChapterSpan)
 
 /**
+ * Joins each span to its stored title by chapter index — the two sides [matchChapters] needs.
+ *
+ * A [ChapterSpan] carries no title, and substituting anything derived from the span itself is the
+ * one mistake this function exists to prevent: a chapter *index* stringifies into a label that
+ * `normalizeChapterLabel` reads as a perfectly valid chapter number, so it matches an entry — the
+ * wrong one, by however many structural marks precede it. The failure is silent and looks like
+ * ordinary drift. A title that is missing normalizes to [ChapterKey.Unrecognized] instead, which
+ * costs that one chapter its anchor and, if none are recognized, falls the whole book back to
+ * order matching.
+ */
+fun audioChaptersFrom(spans: List<ChapterSpan>, titlesByIndex: Map<Int, String>): List<AudioChapter> =
+    spans.map { span -> AudioChapter(titlesByIndex[span.chapterIndex].orEmpty(), span) }
+
+/**
  * What a normalized chapter label reduces to (design D3). Two labels denote the same chapter when
  * they normalize to equal keys, regardless of notation.
  */

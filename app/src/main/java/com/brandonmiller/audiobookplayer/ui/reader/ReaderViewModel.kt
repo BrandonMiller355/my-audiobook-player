@@ -22,9 +22,9 @@ import com.brandonmiller.audiobookplayer.ebook.EbookParseResult
 import com.brandonmiller.audiobookplayer.ebook.EbookSource
 import com.brandonmiller.audiobookplayer.ebook.ReadingPosition
 import com.brandonmiller.audiobookplayer.ebook.SearchHit
-import com.brandonmiller.audiobookplayer.playback.AudioChapter
 import com.brandonmiller.audiobookplayer.playback.PlaybackService
 import com.brandonmiller.audiobookplayer.playback.ReadAlongMap
+import com.brandonmiller.audiobookplayer.playback.audioChaptersFrom
 import com.brandonmiller.audiobookplayer.playback.chapterTimeline
 import com.brandonmiller.audiobookplayer.playback.currentLocation
 import com.brandonmiller.audiobookplayer.playback.matchChapters
@@ -193,7 +193,16 @@ class ReaderViewModel(
         }
     }
 
-    private fun buildReadAlongMap(ebook: Ebook, chapterOffset: Int = 0): Pair<ReadAlongMap?, ReadAlongUnavailable?> {
+    /**
+     * The matcher pairs chapters by their *labels*, so it needs the book's real chapter titles. The
+     * player's timeline carries starts and durations only — no titles — so they come from the
+     * stored chapter rows, indexed by the same `chapterIndex` the timeline uses: its bounds are
+     * built from those same rows, in that order (see `mediaItemsFor`).
+     */
+    private suspend fun buildReadAlongMap(
+        ebook: Ebook,
+        chapterOffset: Int = 0,
+    ): Pair<ReadAlongMap?, ReadAlongUnavailable?> {
         if (ebook.contents.isEmpty()) return null to ReadAlongUnavailable.NoTableOfContents
 
         val ctrl = controller ?: return null to null
@@ -202,8 +211,10 @@ class ReaderViewModel(
 
         if (spans.size <= 1) return null to ReadAlongUnavailable.NoAudioChapters
 
-        val audioChapters = spans.map { span -> AudioChapter(span.chapterIndex.toString(), span) }
-        val map = matchChapters(audioChapters, ebook, manualOffset = chapterOffset)
+        val titles = withContext(Dispatchers.IO) { dao.chaptersFor(bookId) }
+            .associate { it.chapterIndex to it.title }
+
+        val map = matchChapters(audioChaptersFrom(spans, titles), ebook, manualOffset = chapterOffset)
         if (map.isEmpty()) return null to ReadAlongUnavailable.NoAudioChapters
 
         return ReadAlongMap(map) to null

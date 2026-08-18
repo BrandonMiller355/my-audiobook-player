@@ -44,6 +44,40 @@ class ChapterMatchingRealBookTest {
     }
 
 
+    /**
+     * The join the Reader performs, against the real book. Written as its own test because the
+     * first device build got it wrong in a way nothing else here could catch: the spans were
+     * labeled with their own `chapterIndex` instead of the stored title, and since this book's
+     * table of contents labels its chapters with bare numbers, every index matched an entry — the
+     * one displaced by the structural "Part" marks before it. Anchors were produced, the count
+     * looked reasonable, and the text simply ran a chapter ahead.
+     */
+    @Test
+    fun `spans take their labels from the stored titles, not from their own index`() {
+        val spans = audioChapters().map { it.span }
+        val titles = RAW_AUDIO.mapIndexed { index, (title, _) -> index to title }.toMap()
+
+        val joined = audioChaptersFrom(spans, titles)
+
+        // Index 2 is "Chapter 1" — the prologue and the structural "Part One" precede it.
+        assertEquals("Chapter 1", joined[2].title)
+        assertEquals(2, joined[2].span.chapterIndex)
+
+        // The whole point: matching off this join lands where matching off the real titles does.
+        assertEquals(matchChapters(audioChapters(), ebook()), matchChapters(joined, ebook()))
+    }
+
+    /** A title the chapter rows do not have leaves that chapter unlabeled rather than misnumbered. */
+    @Test
+    fun `a missing title yields an empty label rather than a stand-in`() {
+        val spans = audioChapters().map { it.span }
+
+        val joined = audioChaptersFrom(spans, titlesByIndex = emptyMap())
+
+        assertTrue(joined.all { it.title.isEmpty() })
+        assertEquals(spans.size, joined.size)
+    }
+
     private fun audioChapters(): List<AudioChapter> {
         var cursor = 0L
         return RAW_AUDIO.mapIndexed { index, (title, duration) ->
