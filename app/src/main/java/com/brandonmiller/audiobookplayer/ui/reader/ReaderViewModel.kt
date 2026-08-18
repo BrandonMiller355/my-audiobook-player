@@ -72,6 +72,8 @@ data class ReaderUiState(
     val readAlongUnavailable: ReadAlongUnavailable? = null,
     /** Current playback position in ms, used to drive auto-scroll. */
     val playbackPositionMs: Long? = null,
+    /** Whether read-along is enabled for this book. */
+    val readAlongEnabled: Boolean? = null,
 )
 
 class ReaderViewModel(
@@ -174,6 +176,7 @@ class ReaderViewModel(
                             unavailableMessage = null,
                             readAlongMap = map,
                             readAlongUnavailable = unavailable,
+                            readAlongEnabled = book.readAlongEnabled,
                         )
                     }
                 }
@@ -244,7 +247,7 @@ class ReaderViewModel(
 
     fun jumpToBlock(blockIndex: Int, alsoSeek: Boolean = true) {
         _state.update { it.copy(scrollToBlock = blockIndex) }
-        if (alsoSeek && _state.value.readAlongMap != null) {
+        if (alsoSeek && _state.value.readAlongMap != null && (_state.value.readAlongEnabled ?: true)) {
             val previous = _state.value.playbackPositionMs ?: 0L
             seekFromReaderPosition(blockIndex, previous)
         }
@@ -311,6 +314,14 @@ class ReaderViewModel(
         if (player.isPlaying) player.pause() else player.play()
     }
 
+    fun toggleReadAlong() {
+        val current = _state.value.readAlongEnabled ?: false
+        _state.update { it.copy(readAlongEnabled = !current) }
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.updateReadAlongEnabled(bookId, !current)
+        }
+    }
+
     /** Replaces the linked ebook. The reading position goes with the old one; it means nothing here. */
     fun changeEbook(uri: Uri) {
         viewModelScope.launch {
@@ -336,6 +347,7 @@ class ReaderViewModel(
             // one. They go with the book they were found in.
             searchJob?.cancel()
 
+            val book = withContext(Dispatchers.IO) { dao.findBook(bookId) }
             val (map, unavailable) = buildReadAlongMap(result.book)
 
             _state.update {
@@ -348,6 +360,7 @@ class ReaderViewModel(
                     searchHits = emptyList(),
                     readAlongMap = map,
                     readAlongUnavailable = unavailable,
+                    readAlongEnabled = book?.readAlongEnabled,
                 )
             }
         }

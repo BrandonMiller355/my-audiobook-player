@@ -74,6 +74,8 @@ fun ReaderChrome(
     isPlaying: Boolean,
     hasContents: Boolean,
     canSearch: Boolean,
+    readAlongEnabled: Boolean?,
+    readAlongUnavailable: ReadAlongUnavailable?,
     onBack: () -> Unit,
     onPlayPause: () -> Unit,
     onSearch: () -> Unit,
@@ -81,6 +83,7 @@ fun ReaderChrome(
     onSettings: () -> Unit,
     onChange: () -> Unit,
     onUnlink: () -> Unit,
+    onToggleReadAlong: () -> Unit,
 ) {
     AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
         // Fills the screen, not just its content: the two rows align to opposite edges, so a box
@@ -147,6 +150,30 @@ fun ReaderChrome(
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
                         )
+                    }
+                    if (readAlongUnavailable != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(ReaderChromeFill.copy(alpha = 0.5f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "♪",
+                                color = ReaderChromeInkDim,
+                                fontSize = 18.sp,
+                            )
+                        }
+                    } else {
+                        val isEnabled = readAlongEnabled ?: true
+                        ChromeButton(onClick = onToggleReadAlong) {
+                            Text(
+                                text = "♪",
+                                color = if (isEnabled) ReaderChromeInk else ReaderChromeInkDim,
+                                fontSize = 18.sp,
+                            )
+                        }
                     }
                 }
             }

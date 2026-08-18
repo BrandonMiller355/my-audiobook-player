@@ -94,6 +94,7 @@ Reversing `add-ebook-companion` design D8, which had the reader deliberately ign
       first visible block (D6)
 - [ ] 5.5 Open the reader at the audio position rather than the saved reading position while read-along
       is on, and stop writing a separate reading position while it is on (D11)
+- [x] 5.x Gate auto-scroll on readAlongEnabled flag (implemented with toggle control)
 
 ## 6. The audio follows the reader
 
@@ -107,27 +108,27 @@ Reversing `add-ebook-companion` design D8, which had the reader deliberately ign
 - [x] 6.5 Leave the transport state alone across the seek — paused stays paused (D8)
 - [ ] 6.6 Offer undo through the existing `SnackbarHost`, restoring the position captured before the
       seek (D5)
-- [ ] 6.7 Route table-of-contents jumps and search-result jumps through the same path, so one rule
+- [x] 6.7 Route table-of-contents jumps and search-result jumps through the same path, so one rule
       covers all three deliberate movements (D12)
 - [ ] 6.8 Add a test that drives a synthetic auto-scroll sequence through the gate and asserts **no**
       seek is issued — the loop from D4 must be caught by a test, not by device testing
 
 ## 7. Reader controls
 
-- [ ] 7.1 Add the read-along toggle to the reader's chrome, reflecting the stored per-book state and
+- [x] 7.1 Add the read-along toggle to the reader's chrome, reflecting the stored per-book state and
       defaulting on for a book that supports it
-- [ ] 7.2 Show read-along as unavailable with its reason rather than as an inert control (D10)
+- [x] 7.2 Show read-along as unavailable with its reason rather than as an inert control (D10)
 - [ ] 7.3 Add the chapter offset control, resolving the open question about where it lives — chrome row
       or settings sheet — and note the choice in design.md
-- [ ] 7.4 Add the strings for the toggle, the two unavailability reasons, the undo message, and the
+- [x] 7.4 Add the strings for the toggle, the two unavailability reasons, the undo message, and the
       offset control
 
 ## 8. Specs and documentation
 
-- [ ] 8.1 Rewrite the Purpose prose at the top of `openspec/specs/ebook-reader/spec.md` when syncing.
+- [x] 8.1 Rewrite the Purpose prose at the top of `openspec/specs/ebook-reader/spec.md` when syncing.
       It currently states that no scrolling with the narration exists and that the absence "is a
       decision, not a gap" — the requirement deltas do not touch that paragraph and it becomes wrong
-- [ ] 8.2 Note in `handoffs/2026-08-10-ebook-audio-readalong.md` which tier was ultimately chosen and
+- [x] 8.2 Note in `handoffs/2026-08-10-ebook-audio-readalong.md` which tier was ultimately chosen and
       why, so the four-tier analysis is not re-litigated by a later session
 - [ ] 8.3 Amend the PRD for §7 gaining the reader as a place a seek can originate
 

@@ -201,3 +201,27 @@ Bash-tool writes to project files do not persist in this sandbox; use PowerShell
 Commits go through the `tscommit` Bash function and carry no Claude co-authorship attribution.
 Branches use a plain feature slug, never a `claude/` prefix. Handoffs live in `handoffs/` in the
 repo, never the OS temp directory.
+
+---
+
+## Implementation Resolution (2026-08-18)
+
+**Tier chosen: 1 (Tier 1 + proportional interpolation)**
+
+The user answered open questions 1–2: matching EPUBs exist (The Hero of Ages verified), and the
+accuracy target is "roughly the same page," not sentence-level. This makes Tier 1 (chapter-anchored)
+viable and cost-effective.
+
+**Why this tier:** Chapter boundaries exist because the user is tagging them (verifying the
+assumption that blocked Tier 1). Character-count prediction yields ≤1.6 minutes mid-chapter drift on
+real data — within the accuracy budget. No desktop preprocessing required (addresses §8 concern).
+Tier 4 complexity deferred; this change adds zero new dependencies.
+
+**Constraints:** Requires chapter marks on audio side and a table of contents on the ebook side. Both
+present as unavailable states (read-along toggle disables, message explains why) rather than feature
+failures. Books without either behave as Tier 0 (manual): reading and playback positions are
+independent.
+
+**What this enables:** Piecewise-linear map between absolute milliseconds and absolute characters.
+Character interpolation is the key insight — narration rate is stable per-character; narration rate
+per-paragraph varies by 200x. That stability is what makes Tier 1 work on this library.

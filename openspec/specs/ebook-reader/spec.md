@@ -3,21 +3,23 @@
 ## Purpose
 
 Reading a linked EPUB inside the app, on a black page the Player's cover art flips to and back.
+While an audiobook plays, the reader can follow the narration, scrolling automatically to keep pace
+with the audio, and a user scroll jumps the audio to match.
 
-**Scope: this is the manual companion tier.** The reading position and the playback position are
-two independent places in the same book, and nothing here attempts to keep them in step — no
-highlighting the narrated sentence, no scrolling with the narration, no manual sync anchors, no
-deriving audio chapters from the ebook's structure. That absence is a decision, not a gap.
+**Read-along tier.** When the book carries tagged chapter marks and the ebook has a table of contents,
+the reader follows the audio via piecewise-linear interpolation: character counts predict narration
+time within a chapter, and chapter boundaries eliminate drift. The reading position and the playback
+position become the same position. When the book lacks chapter marks or the ebook lacks a table of
+contents, read-along is unavailable and the reader behaves as a manual tier: the two positions are
+independent.
 
-Synchronization is a different project, and the reason is concrete: it requires forced alignment,
-and the owner's `.m4b` files are each a single 10–14 hour chapter, so there are no chapter
-boundaries to re-anchor against and drift accumulates unchecked. The four tiers that were
-considered, what each would cost, and which the owner's library can actually support are set out in
-`handoffs/2026-08-10-ebook-audio-readalong.md`. The full list of what this tier deliberately leaves
-out is in the archived proposal at
-`openspec/changes/archive/2026-08-17-add-ebook-companion/proposal.md`.
+The four tiers that were considered, their costs, and which the owner's library can actually support
+are set out in `handoffs/2026-08-10-ebook-audio-readalong.md`. The full list of what this tier
+deliberately leaves out — word-level sync, forced alignment, learning from use, deriving chapters
+from structure — is in the proposal for this change at
+`openspec/changes/add-readalong-scroll/proposal.md`.
 
-A later tier would add requirements to this capability rather than replace it, the way `playback`
+A finer tier would add requirements to this capability rather than replace it, the way `playback`
 has grown across four changes.
 
 ## Requirements

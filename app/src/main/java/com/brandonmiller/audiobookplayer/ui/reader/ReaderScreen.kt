@@ -140,7 +140,7 @@ fun ReaderScreen(
                 if (isScrolling) {
                     wasScrolling = true
                     lastScrollTime = System.currentTimeMillis()
-                } else if (wasScrolling && state.readAlongMap != null) {
+                } else if (wasScrolling && state.readAlongMap != null && (state.readAlongEnabled ?: true)) {
                     val previous = state.playbackPositionMs ?: 0L
                     val didSeek = viewModel.seekFromReaderPosition(listState.firstVisibleItemIndex, previous)
                     wasScrolling = false
@@ -151,9 +151,10 @@ fun ReaderScreen(
             }
     }
 
-    LaunchedEffect(state.readAlongMap, state.playbackPositionMs) {
+    LaunchedEffect(state.readAlongMap, state.playbackPositionMs, state.readAlongEnabled) {
         val map = state.readAlongMap ?: return@LaunchedEffect
         val posMs = state.playbackPositionMs ?: return@LaunchedEffect
+        if ((state.readAlongEnabled ?: true) == false) return@LaunchedEffect
         if (listState.isScrollInProgress) return@LaunchedEffect
 
         val target = viewModel.targetBlockForPlaybackPosition(posMs)
@@ -204,6 +205,8 @@ fun ReaderScreen(
             isPlaying = state.isPlaying,
             hasContents = state.book?.contents?.isNotEmpty() == true,
             canSearch = state.book != null,
+            readAlongEnabled = state.readAlongEnabled,
+            readAlongUnavailable = state.readAlongUnavailable,
             onBack = onBack,
             onPlayPause = viewModel::togglePlayPause,
             onSearch = { searchOpen = true },
@@ -211,6 +214,7 @@ fun ReaderScreen(
             onSettings = { settingsOpen = true },
             onChange = { pickEbook.launch(OpenPersistableDocument.EBOOK_MIME_TYPES) },
             onUnlink = viewModel::unlinkEbook,
+            onToggleReadAlong = viewModel::toggleReadAlong,
         )
 
         SnackbarHost(
