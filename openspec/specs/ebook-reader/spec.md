@@ -131,6 +131,39 @@ reader to the start of that section. Where the ebook groups its entries — part
 - **THEN** the reader says so rather than showing an empty list
 - **AND** scrolling still works normally
 
+### Requirement: The ebook's text can be searched
+
+The reader SHALL let the user search the ebook's text for a word or phrase, and selecting a result
+SHALL move the reader to that place the way a table-of-contents entry does. Matching SHALL be
+case-insensitive plain text within a single block; it is not required to match across block
+boundaries, and the number of results MAY be capped.
+
+#### Scenario: Finding a word
+
+- **WHEN** the user searches for a word that appears in the ebook
+- **THEN** the places it appears are listed, each with the surrounding text
+
+#### Scenario: Following a result
+
+- **WHEN** the user selects a search result
+- **THEN** the reader moves to that place in the book
+- **AND** the search closes
+
+#### Scenario: A word that is not in the book
+
+- **WHEN** the user searches for text the ebook does not contain
+- **THEN** the reader says there are no matches rather than showing an empty list
+
+#### Scenario: Case does not matter
+
+- **WHEN** the user searches in a different case than the book uses
+- **THEN** the matches are found anyway
+
+#### Scenario: Searching does not move the reader on its own
+
+- **WHEN** the user searches and then dismisses the search without selecting a result
+- **THEN** the reader is still where it was and the saved reading position is unchanged
+
 ### Requirement: Reader controls are revealed by tapping and hide themselves
 
 The reader's controls SHALL be hidden while reading and SHALL be revealed by a tap in the middle of

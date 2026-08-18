@@ -47,6 +47,19 @@ data class Block(
  */
 data class NavEntry(val label: String, val depth: Int, val blockIndex: Int)
 
+/**
+ * One search result: which block matched, and enough words around the match to recognize it by.
+ *
+ * [matchStart] and [matchEnd] are offsets within [snippet] rather than within the block, so the
+ * highlight needs no knowledge of how the snippet was cut.
+ */
+data class SearchHit(
+    val blockIndex: Int,
+    val snippet: String,
+    val matchStart: Int,
+    val matchEnd: Int,
+)
+
 /** Where the user was reading. Resolved against [Ebook.blockIndexFor] to a scroll target. */
 data class ReadingPosition(val spineIndex: Int, val charOffset: Int) {
     companion object {
@@ -86,6 +99,55 @@ data class Ebook(
     fun positionOf(blockIndex: Int): ReadingPosition {
         val block = blocks.getOrNull(blockIndex) ?: return ReadingPosition.START
         return ReadingPosition(block.spineIndex, block.charOffset)
+    }
+
+    /**
+     * The blocks containing [query], case-insensitively, in reading order and capped at [limit].
+     *
+     * Plain substring matching, deliberately: no stemming, no regex, and no matching across block
+     * boundaries. A phrase split over two paragraphs is not a phrase anyone searching for it would
+     * type, and the cap exists because a common word in a 400,000-word book otherwise returns a list
+     * nobody can use.
+     *
+     * At most one hit per block. A second match in the same paragraph scrolls to the same place, so
+     * it would be a second row that goes where the first one already went.
+     */
+    fun search(query: String, limit: Int = MAX_SEARCH_HITS): List<SearchHit> {
+        val needle = query.trim()
+        if (needle.length < MIN_SEARCH_LENGTH) return emptyList()
+
+        val hits = mutableListOf<SearchHit>()
+        for (index in blocks.indices) {
+            val at = blocks[index].text.indexOf(needle, ignoreCase = true)
+            if (at < 0) continue
+            hits += hitAt(index, at, needle.length)
+            if (hits.size == limit) break
+        }
+        return hits
+    }
+
+    private fun hitAt(blockIndex: Int, at: Int, length: Int): SearchHit {
+        val text = blocks[blockIndex].text
+        val from = (at - SNIPPET_LEAD).coerceAtLeast(0)
+        val to = (at + length + SNIPPET_TRAIL).coerceAtMost(text.length)
+        val ellipsis = if (from > 0) "…" else ""
+        val start = ellipsis.length + (at - from)
+
+        return SearchHit(
+            blockIndex = blockIndex,
+            snippet = ellipsis + text.substring(from, to) + if (to < text.length) "…" else "",
+            matchStart = start,
+            matchEnd = start + length,
+        )
+    }
+
+    companion object {
+        /** One letter matches most of a book, which is a result list rather than an answer. */
+        const val MIN_SEARCH_LENGTH = 2
+        const val MAX_SEARCH_HITS = 200
+
+        private const val SNIPPET_LEAD = 40
+        private const val SNIPPET_TRAIL = 80
     }
 }
 

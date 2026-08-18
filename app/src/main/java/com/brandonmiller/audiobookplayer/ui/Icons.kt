@@ -210,6 +210,15 @@ fun WarningIcon(size: Dp, color: Color, contentDescription: String?, modifier: M
     }
 }
 
+/** A magnifier, for searching an ebook's text. */
+@Composable
+fun SearchIcon(size: Dp, color: Color, contentDescription: String?, modifier: Modifier = Modifier) {
+    IconCanvas(size, contentDescription, modifier) { unit, stroke ->
+        drawCircle(color, radius = 6.5f * unit, center = Offset(10.5f * unit, 10.5f * unit), style = stroke)
+        drawLine(color, Offset(15.5f * unit, 15.5f * unit), Offset(20f * unit, 20f * unit), stroke.width, StrokeCap.Round)
+    }
+}
+
 /**
  * The shared frame: a square canvas of [size], the pixel length of one grid unit, and a [Stroke]
  * already carrying the round caps and joins every icon here uses.

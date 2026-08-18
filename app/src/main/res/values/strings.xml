@@ -77,6 +77,10 @@
     <string name="reader_contents">Contents</string>
     <string name="reader_contents_close">Close contents</string>
     <string name="reader_contents_empty">This ebook has no table of contents.</string>
+    <string name="reader_search">Search this ebook</string>
+    <string name="reader_search_hint">Search this ebook</string>
+    <string name="reader_search_prompt">Type a word or a phrase to find it in this ebook.</string>
+    <string name="reader_search_empty">No matches.</string>
     <string name="reader_settings">Reading settings</string>
     <string name="reader_settings_close">Close settings</string>
     <string name="reader_change">Change ebook</string>

@@ -21,9 +21,11 @@ import com.brandonmiller.audiobookplayer.ebook.Ebook
 import com.brandonmiller.audiobookplayer.ebook.EbookParseResult
 import com.brandonmiller.audiobookplayer.ebook.EbookSource
 import com.brandonmiller.audiobookplayer.ebook.ReadingPosition
+import com.brandonmiller.audiobookplayer.ebook.SearchHit
 import com.brandonmiller.audiobookplayer.playback.PlaybackService
 import com.brandonmiller.audiobookplayer.ui.library.UriPermissionHolder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +40,8 @@ data class ReaderUiState(
     val scrollToBlock: Int? = null,
     val settings: ReadingSettings = ReadingSettings(),
     val isPlaying: Boolean = false,
+    val searchQuery: String = "",
+    val searchHits: List<SearchHit> = emptyList(),
     /**
      * Why the ebook cannot be shown, as a string resource, or null when it can. Distinct from
      * "loading" so the screen never shows an empty page that looks like a book with no words.
@@ -66,6 +70,7 @@ class ReaderViewModel(
     val state: StateFlow<ReaderUiState> = _state.asStateFlow()
 
     private var controller: MediaController? = null
+    private var searchJob: Job? = null
 
     /**
      * Only play/pause is needed here, so only play/pause is listened for. The Reader deliberately
@@ -168,6 +173,21 @@ class ReaderViewModel(
         }
     }
 
+    /**
+     * Runs off the main thread and cancels the previous run, because this is called on every
+     * keystroke and a whole book is scanned each time.
+     */
+    fun search(query: String) {
+        searchJob?.cancel()
+        _state.update { it.copy(searchQuery = query) }
+
+        val book = _state.value.book ?: return
+        searchJob = viewModelScope.launch {
+            val hits = withContext(Dispatchers.Default) { book.search(query) }
+            _state.update { it.copy(searchHits = hits) }
+        }
+    }
+
     fun jumpToBlock(blockIndex: Int) {
         _state.update { it.copy(scrollToBlock = blockIndex) }
         saveReadingPosition(blockIndex)
@@ -199,12 +219,17 @@ class ReaderViewModel(
                 dao.linkEbook(bookId, uri.toString())
                 previous?.takeIf { it != uri.toString() }?.let { permissions.release(it.toUri()) }
             }
+            // Hits index the old book's blocks, so they would scroll to arbitrary places in the new
+            // one. They go with the book they were found in.
+            searchJob?.cancel()
             _state.update {
                 it.copy(
                     book = result.book,
                     scrollToBlock = 0,
                     unavailableMessage = null,
                     loading = false,
+                    searchQuery = "",
+                    searchHits = emptyList(),
                 )
             }
         }

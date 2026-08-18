@@ -27,43 +27,56 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.brandonmiller.audiobookplayer.R
 import com.brandonmiller.audiobookplayer.data.ReadingSettings
+import com.brandonmiller.audiobookplayer.ebook.Ebook
 import com.brandonmiller.audiobookplayer.ebook.NavEntry
+import com.brandonmiller.audiobookplayer.ebook.SearchHit
 import com.brandonmiller.audiobookplayer.ui.ChevronIcon
 import com.brandonmiller.audiobookplayer.ui.HorizontalDirection
 import com.brandonmiller.audiobookplayer.ui.PauseIcon
 import com.brandonmiller.audiobookplayer.ui.PlayIcon
+import com.brandonmiller.audiobookplayer.ui.SearchIcon
 
 /**
- * The revealed controls: flip back, contents, settings, play/pause, and the two ebook-management
- * actions.
+ * The revealed controls: flip back, search, contents, settings, play/pause, and the two
+ * ebook-management actions.
  *
  * One revealed layer rather than a fixed bar, because a permanent bar contradicts the point of a
- * black reading page, and because six controls need somewhere to live that a single corner button
- * cannot provide (`add-ebook-companion` design D7).
+ * black reading page, and because this many controls need somewhere to live that a single corner
+ * button cannot provide (`add-ebook-companion` design D7).
  */
 @Composable
 fun ReaderChrome(
     visible: Boolean,
     isPlaying: Boolean,
     hasContents: Boolean,
+    canSearch: Boolean,
     onBack: () -> Unit,
     onPlayPause: () -> Unit,
+    onSearch: () -> Unit,
     onContents: () -> Unit,
     onSettings: () -> Unit,
     onChange: () -> Unit,
@@ -115,6 +128,11 @@ fun ReaderChrome(
                             PauseIcon(20.dp, ReaderChromeInk, stringResource(R.string.player_pause))
                         } else {
                             PlayIcon(20.dp, ReaderChromeInk, stringResource(R.string.player_play))
+                        }
+                    }
+                    if (canSearch) {
+                        ChromeButton(onClick = onSearch) {
+                            SearchIcon(20.dp, ReaderChromeInk, stringResource(R.string.reader_search))
                         }
                     }
                     if (hasContents) {
@@ -252,6 +270,102 @@ fun ContentsSheet(
             item { Spacer(Modifier.height(24.dp)) }
         }
     }
+}
+
+/**
+ * Searching the ebook's text.
+ *
+ * The same sheet as the table of contents, and for the same reason: both are lists of places in the
+ * book, and a hit behaves exactly like a contents entry once selected. The field takes focus on
+ * open, because a search sheet that needs a second tap before it can be typed into is a sheet that
+ * costs two taps every time.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SearchSheet(
+    query: String,
+    hits: List<SearchHit>,
+    onQuery: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onSelect: (SearchHit) -> Unit,
+) {
+    val focusRequester = remember { FocusRequester() }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = ReaderSheet,
+    ) {
+        LaunchedEffect(Unit) { focusRequester.requestFocus() }
+
+        TextField(
+            value = query,
+            onValueChange = onQuery,
+            singleLine = true,
+            placeholder = {
+                Text(
+                    text = stringResource(R.string.reader_search_hint),
+                    color = ReaderChromeInkDim,
+                    fontSize = 15.sp,
+                )
+            },
+            leadingIcon = { SearchIcon(20.dp, ReaderChromeInkDim, null) },
+            colors = TextFieldDefaults.colors(
+                focusedTextColor = ReaderChromeInk,
+                unfocusedTextColor = ReaderChromeInk,
+                focusedContainerColor = ReaderChromeFill,
+                unfocusedContainerColor = ReaderChromeFill,
+                cursorColor = ReaderChromeInk,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+            ),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .focusRequester(focusRequester),
+        )
+
+        val tooShort = query.trim().length < Ebook.MIN_SEARCH_LENGTH
+        if (hits.isEmpty()) {
+            Text(
+                text = stringResource(
+                    if (tooShort) R.string.reader_search_prompt else R.string.reader_search_empty,
+                ),
+                color = ReaderChromeInkDim,
+                fontSize = 15.sp,
+                modifier = Modifier.padding(24.dp),
+            )
+            return@ModalBottomSheet
+        }
+
+        LazyColumn(modifier = Modifier.heightIn(max = 460.dp)) {
+            items(hits) { hit ->
+                Text(
+                    text = highlight(hit),
+                    color = ReaderChromeInkDim,
+                    fontSize = 15.sp,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(hit) }
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                )
+            }
+            item { Spacer(Modifier.height(24.dp)) }
+        }
+    }
+}
+
+/** The matched words in full white against the snippet's dimmer surroundings. */
+private fun highlight(hit: SearchHit) = buildAnnotatedString {
+    append(hit.snippet)
+    addStyle(
+        SpanStyle(color = ReaderChromeInk, fontWeight = FontWeight.Medium),
+        hit.matchStart,
+        hit.matchEnd,
+    )
 }
 
 /**

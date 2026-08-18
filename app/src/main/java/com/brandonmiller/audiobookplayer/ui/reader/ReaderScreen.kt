@@ -96,6 +96,7 @@ fun ReaderScreen(
     var restored by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
     var contentsOpen by remember { mutableStateOf(false) }
+    var searchOpen by remember { mutableStateOf(false) }
 
     val pickEbook = rememberLauncherForActivityResult(OpenPersistableDocument()) { uri ->
         uri?.let(viewModel::changeEbook)
@@ -171,8 +172,10 @@ fun ReaderScreen(
             visible = chromeVisible,
             isPlaying = state.isPlaying,
             hasContents = state.book?.contents?.isNotEmpty() == true,
+            canSearch = state.book != null,
             onBack = onBack,
             onPlayPause = viewModel::togglePlayPause,
+            onSearch = { searchOpen = true },
             onContents = { contentsOpen = true },
             onSettings = { settingsOpen = true },
             onChange = { pickEbook.launch(OpenPersistableDocument.EBOOK_MIME_TYPES) },
@@ -192,6 +195,21 @@ fun ReaderScreen(
             onSelect = { entry ->
                 viewModel.jumpToBlock(entry.blockIndex)
                 contentsOpen = false
+            },
+        )
+    }
+
+    // The query and its hits outlive the sheet on purpose: reopening search after following one hit
+    // is how a reader checks the next one, and retyping the word to do it would be a chore.
+    if (searchOpen) {
+        SearchSheet(
+            query = state.searchQuery,
+            hits = state.searchHits,
+            onQuery = viewModel::search,
+            onDismiss = { searchOpen = false },
+            onSelect = { hit ->
+                viewModel.jumpToBlock(hit.blockIndex)
+                searchOpen = false
             },
         )
     }
