@@ -166,7 +166,7 @@ class ReaderViewModel(
                         charOffset = book.ebookCharOffset ?: 0,
                     )
 
-                    val (map, unavailable) = buildReadAlongMap(ebook)
+                    val (map, unavailable) = buildReadAlongMap(ebook, book.readAlongChapterOffset ?: 0)
 
                     _state.update {
                         it.copy(
@@ -193,7 +193,7 @@ class ReaderViewModel(
         }
     }
 
-    private fun buildReadAlongMap(ebook: Ebook): Pair<ReadAlongMap?, ReadAlongUnavailable?> {
+    private fun buildReadAlongMap(ebook: Ebook, chapterOffset: Int = 0): Pair<ReadAlongMap?, ReadAlongUnavailable?> {
         if (ebook.contents.isEmpty()) return null to ReadAlongUnavailable.NoTableOfContents
 
         val ctrl = controller ?: return null to null
@@ -203,7 +203,7 @@ class ReaderViewModel(
         if (spans.size <= 1) return null to ReadAlongUnavailable.NoAudioChapters
 
         val audioChapters = spans.map { span -> AudioChapter(span.chapterIndex.toString(), span) }
-        val map = matchChapters(audioChapters, ebook)
+        val map = matchChapters(audioChapters, ebook, manualOffset = chapterOffset)
         if (map.isEmpty()) return null to ReadAlongUnavailable.NoAudioChapters
 
         return ReadAlongMap(map) to null
@@ -348,7 +348,7 @@ class ReaderViewModel(
             searchJob?.cancel()
 
             val book = withContext(Dispatchers.IO) { dao.findBook(bookId) }
-            val (map, unavailable) = buildReadAlongMap(result.book)
+            val (map, unavailable) = buildReadAlongMap(result.book, book?.readAlongChapterOffset ?: 0)
 
             _state.update {
                 it.copy(
