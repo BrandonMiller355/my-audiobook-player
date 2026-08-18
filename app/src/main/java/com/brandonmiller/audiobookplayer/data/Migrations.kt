@@ -43,3 +43,16 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         db.execSQL("ALTER TABLE audiobooks ADD COLUMN ebookCharOffset INTEGER")
     }
 }
+
+/**
+ * Adds the read-along toggle and chapter offset (`add-readalong-scroll` design D9). Additive and
+ * non-destructive in the same shape as the three above, with no backfill: an existing book keeps
+ * both null, which reads as "never configured" — the toggle then defaults on for a book that
+ * supports read-along and the offset defaults to whatever the app detects.
+ */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE audiobooks ADD COLUMN readAlongEnabled INTEGER")
+        db.execSQL("ALTER TABLE audiobooks ADD COLUMN readAlongChapterOffset INTEGER")
+    }
+}

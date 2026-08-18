@@ -102,6 +102,40 @@ data class Ebook(
     }
 
     /**
+     * Cumulative character count preceding each block, counted across the whole book rather than
+     * within one spine item — the text-side coordinate `ReadAlongMap` interpolates against
+     * (`add-readalong-scroll` design D1). Computed once and cached: a pass over a ~900,000-character
+     * book is negligible next to parsing the EPUB itself (PRD §23).
+     */
+    val characterPrefixSums: IntArray by lazy {
+        val sums = IntArray(blocks.size)
+        var total = 0
+        for (i in blocks.indices) {
+            sums[i] = total
+            total += blocks[i].text.length
+        }
+        sums
+    }
+
+    /** Total characters across every block — the upper bound [characterPrefixSums] approaches. */
+    val totalCharacters: Int
+        get() = if (blocks.isEmpty()) 0 else characterPrefixSums.last() + blocks.last().text.length
+
+    /** The absolute character position, across the whole book, at the start of [blockIndex]. */
+    fun absoluteCharsAt(blockIndex: Int): Int = characterPrefixSums.getOrNull(blockIndex) ?: totalCharacters
+
+    /**
+     * The block containing absolute character position [chars] — the reverse of [absoluteCharsAt],
+     * and what a read-along seek target resolves to before it becomes a scroll target.
+     */
+    fun blockIndexForAbsoluteChars(chars: Int): Int {
+        if (blocks.isEmpty()) return 0
+        val found = characterPrefixSums.binarySearch(chars)
+        val index = if (found >= 0) found else -found - 2
+        return index.coerceIn(0, blocks.size - 1)
+    }
+
+    /**
      * The blocks containing [query], case-insensitively, in reading order and capped at [limit].
      *
      * Plain substring matching, deliberately: no stemming, no regex, and no matching across block
