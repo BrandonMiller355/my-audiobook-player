@@ -22,7 +22,12 @@ import com.brandonmiller.audiobookplayer.ebook.EbookParseResult
 import com.brandonmiller.audiobookplayer.ebook.EbookSource
 import com.brandonmiller.audiobookplayer.ebook.ReadingPosition
 import com.brandonmiller.audiobookplayer.ebook.SearchHit
+import com.brandonmiller.audiobookplayer.playback.AudioChapter
 import com.brandonmiller.audiobookplayer.playback.PlaybackService
+import com.brandonmiller.audiobookplayer.playback.ReadAlongMap
+import com.brandonmiller.audiobookplayer.playback.chapterTimeline
+import com.brandonmiller.audiobookplayer.playback.currentLocation
+import com.brandonmiller.audiobookplayer.playback.matchChapters
 import com.brandonmiller.audiobookplayer.ui.library.UriPermissionHolder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -32,6 +37,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+/** Why read-along is not available for this book. */
+sealed interface ReadAlongUnavailable {
+    data object NoAudioChapters : ReadAlongUnavailable
+    data object NoTableOfContents : ReadAlongUnavailable
+}
 
 data class ReaderUiState(
     val loading: Boolean = true,
@@ -55,6 +66,12 @@ data class ReaderUiState(
     val pickErrorMessage: Int? = null,
     /** Set when the ebook has been unlinked, so the screen leaves rather than showing nothing. */
     val closed: Boolean = false,
+    /** The read-along map, or null if it is not available or not yet built. */
+    val readAlongMap: ReadAlongMap? = null,
+    /** Why read-along is unavailable for this book, or null if it is available. */
+    val readAlongUnavailable: ReadAlongUnavailable? = null,
+    /** Current playback position in ms, used to drive auto-scroll. */
+    val playbackPositionMs: Long? = null,
 )
 
 class ReaderViewModel(
@@ -71,16 +88,31 @@ class ReaderViewModel(
 
     private var controller: MediaController? = null
     private var searchJob: Job? = null
+    private var positionTrackingJob: Job? = null
 
-    /**
-     * Only play/pause is needed here, so only play/pause is listened for. The Reader deliberately
-     * does not track position: nothing on this screen depends on where the audio is
-     * (`add-ebook-companion` design D8).
-     */
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             _state.update { it.copy(isPlaying = isPlaying) }
+            if (isPlaying) startPositionTracking() else stopPositionTracking()
         }
+    }
+
+    private fun startPositionTracking() {
+        if (positionTrackingJob?.isActive == true) return
+        positionTrackingJob = viewModelScope.launch {
+            while (true) {
+                val pos = controller?.currentPosition
+                if (pos != null) {
+                    _state.update { it.copy(playbackPositionMs = pos) }
+                }
+                withContext(Dispatchers.Default) { kotlinx.coroutines.delay(250) }
+            }
+        }
+    }
+
+    private fun stopPositionTracking() {
+        positionTrackingJob?.cancel()
+        positionTrackingJob = null
     }
 
     init {
@@ -126,16 +158,22 @@ class ReaderViewModel(
 
             when (val result = withContext(Dispatchers.IO) { ebooks.read(uri) }) {
                 is EbookParseResult.Parsed -> {
+                    val ebook = result.book
                     val saved = ReadingPosition(
                         spineIndex = book.ebookSpineIndex ?: 0,
                         charOffset = book.ebookCharOffset ?: 0,
                     )
+
+                    val (map, unavailable) = buildReadAlongMap(ebook)
+
                     _state.update {
                         it.copy(
                             loading = false,
-                            book = result.book,
-                            scrollToBlock = result.book.blockIndexFor(saved),
+                            book = ebook,
+                            scrollToBlock = ebook.blockIndexFor(saved),
                             unavailableMessage = null,
+                            readAlongMap = map,
+                            readAlongUnavailable = unavailable,
                         )
                     }
                 }
@@ -150,6 +188,22 @@ class ReaderViewModel(
                     _state.update { it.copy(loading = false, unavailableMessage = R.string.ebook_unreadable) }
             }
         }
+    }
+
+    private fun buildReadAlongMap(ebook: Ebook): Pair<ReadAlongMap?, ReadAlongUnavailable?> {
+        if (ebook.contents.isEmpty()) return null to ReadAlongUnavailable.NoTableOfContents
+
+        val ctrl = controller ?: return null to null
+        val timeline = ctrl.chapterTimeline()
+        val spans = timeline.chapterSpans()
+
+        if (spans.size <= 1) return null to ReadAlongUnavailable.NoAudioChapters
+
+        val audioChapters = spans.map { span -> AudioChapter(span.chapterIndex.toString(), span) }
+        val map = matchChapters(audioChapters, ebook)
+        if (map.isEmpty()) return null to ReadAlongUnavailable.NoAudioChapters
+
+        return ReadAlongMap(map) to null
     }
 
     /** Consumed by the screen once it has scrolled, so a recomposition does not scroll again. */
@@ -193,6 +247,14 @@ class ReaderViewModel(
         saveReadingPosition(blockIndex)
     }
 
+    /** Compute the block that should be on screen for a given playback position. */
+    fun targetBlockForPlaybackPosition(positionMs: Long): Int? {
+        val map = _state.value.readAlongMap ?: return null
+        val book = _state.value.book ?: return null
+        val chars = map.charsForMs(positionMs)
+        return book.blockIndexForAbsoluteChars(chars)
+    }
+
     fun togglePlayPause() {
         val player = controller ?: return
         if (player.isPlaying) player.pause() else player.play()
@@ -222,6 +284,9 @@ class ReaderViewModel(
             // Hits index the old book's blocks, so they would scroll to arbitrary places in the new
             // one. They go with the book they were found in.
             searchJob?.cancel()
+
+            val (map, unavailable) = buildReadAlongMap(result.book)
+
             _state.update {
                 it.copy(
                     book = result.book,
@@ -230,6 +295,8 @@ class ReaderViewModel(
                     loading = false,
                     searchQuery = "",
                     searchHits = emptyList(),
+                    readAlongMap = map,
+                    readAlongUnavailable = unavailable,
                 )
             }
         }
@@ -266,6 +333,7 @@ class ReaderViewModel(
     }
 
     override fun onCleared() {
+        stopPositionTracking()
         controller?.removeListener(listener)
         // Releases this connection only. The service keeps playing, which is the point.
         controller?.release()

@@ -5,6 +5,7 @@ import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,6 +57,7 @@ import com.brandonmiller.audiobookplayer.ui.library.OpenPersistableDocument
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
+import kotlin.math.absoluteValue
 
 /**
  * Pure black with white text, in both themes.
@@ -134,6 +136,22 @@ fun ReaderScreen(
             .drop(1)
             .filter { !it }
             .collect { viewModel.saveReadingPosition(listState.firstVisibleItemIndex) }
+    }
+
+    LaunchedEffect(state.readAlongMap, state.playbackPositionMs) {
+        val map = state.readAlongMap ?: return@LaunchedEffect
+        val posMs = state.playbackPositionMs ?: return@LaunchedEffect
+        if (listState.isScrollInProgress) return@LaunchedEffect
+
+        val target = viewModel.targetBlockForPlaybackPosition(posMs)
+        if (target == null || target == listState.firstVisibleItemIndex) return@LaunchedEffect
+
+        val distance = (target - listState.firstVisibleItemIndex) * 50
+        if (distance.absoluteValue > 200) {
+            listState.scrollToItem(target)
+        } else if (distance != 0) {
+            listState.scrollBy(distance.toFloat())
+        }
     }
 
     LaunchedEffect(chromeVisible, revealCount) {
