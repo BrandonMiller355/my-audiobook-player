@@ -255,6 +255,44 @@ class ReaderViewModel(
         return book.blockIndexForAbsoluteChars(chars)
     }
 
+    fun seekFromReaderPosition(firstVisibleBlock: Int, previousPositionMs: Long) {
+        val map = _state.value.readAlongMap ?: return
+        val book = _state.value.book ?: return
+        val ctrl = controller ?: return
+
+        val position = book.positionOf(firstVisibleBlock)
+        val chars = position.charOffset + book.absoluteCharsAt(firstVisibleBlock)
+        val newPositionMs = map.msForChars(chars)
+
+        val delta = kotlin.math.abs(newPositionMs - previousPositionMs)
+        if (delta < SEEK_DEAD_ZONE_MS) return
+
+        val wasPlaying = ctrl.isPlaying
+        ctrl.seekTo(newPositionMs)
+        // D8: seek does not change transport state
+        if (!wasPlaying && ctrl.isPlaying) ctrl.pause()
+    }
+
+    companion object {
+        private const val SEEK_DEAD_ZONE_MS = 3000L
+
+        fun factory(context: Context, bookId: String): ViewModelProvider.Factory {
+            val appContext = context.applicationContext
+            return object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T =
+                    ReaderViewModel(
+                        appContext = appContext,
+                        dao = AudiobookDatabase.get(appContext).libraryDao(),
+                        ebooks = EbookSource(appContext.contentResolver),
+                        permissions = UriPermissionHolder(appContext),
+                        preferences = ReadingPreferences(appContext),
+                        bookId = bookId.toLongOrNull() ?: -1L,
+                    ) as T
+            }
+        }
+    }
+
     fun togglePlayPause() {
         val player = controller ?: return
         if (player.isPlaying) player.pause() else player.play()
@@ -339,23 +377,5 @@ class ReaderViewModel(
         controller?.release()
         controller = null
         super.onCleared()
-    }
-
-    companion object {
-        fun factory(context: Context, bookId: String): ViewModelProvider.Factory {
-            val appContext = context.applicationContext
-            return object : ViewModelProvider.Factory {
-                @Suppress("UNCHECKED_CAST")
-                override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T =
-                    ReaderViewModel(
-                        appContext = appContext,
-                        dao = AudiobookDatabase.get(appContext).libraryDao(),
-                        ebooks = EbookSource(appContext.contentResolver),
-                        permissions = UriPermissionHolder(appContext),
-                        preferences = ReadingPreferences(appContext),
-                        bookId = bookId.toLongOrNull() ?: -1L,
-                    ) as T
-            }
-        }
     }
 }

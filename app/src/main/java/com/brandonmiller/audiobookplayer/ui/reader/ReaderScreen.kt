@@ -99,6 +99,7 @@ fun ReaderScreen(
     var settingsOpen by remember { mutableStateOf(false) }
     var contentsOpen by remember { mutableStateOf(false) }
     var searchOpen by remember { mutableStateOf(false) }
+    var lastScrollTime by remember { mutableStateOf(0L) }
 
     val pickEbook = rememberLauncherForActivityResult(OpenPersistableDocument()) { uri ->
         uri?.let(viewModel::changeEbook)
@@ -132,10 +133,21 @@ fun ReaderScreen(
 
     LaunchedEffect(restored) {
         if (!restored) return@LaunchedEffect
+        var wasScrolling = false
         snapshotFlow { listState.isScrollInProgress }
-            .drop(1)
-            .filter { !it }
-            .collect { viewModel.saveReadingPosition(listState.firstVisibleItemIndex) }
+            .collect { isScrolling ->
+                if (isScrolling) {
+                    wasScrolling = true
+                    lastScrollTime = System.currentTimeMillis()
+                } else if (wasScrolling && state.readAlongMap != null) {
+                    val previous = state.playbackPositionMs ?: 0L
+                    viewModel.seekFromReaderPosition(listState.firstVisibleItemIndex, previous)
+                    wasScrolling = false
+                }
+                if (!isScrolling) {
+                    viewModel.saveReadingPosition(listState.firstVisibleItemIndex)
+                }
+            }
     }
 
     LaunchedEffect(state.readAlongMap, state.playbackPositionMs) {
