@@ -86,6 +86,7 @@ import com.brandonmiller.audiobookplayer.ui.PlayIcon
 import com.brandonmiller.audiobookplayer.ui.formatSpeed
 import com.brandonmiller.audiobookplayer.ui.formatTime
 import com.brandonmiller.audiobookplayer.ui.theme.AudiobookType
+import com.brandonmiller.audiobookplayer.ui.theme.OnInk
 import com.brandonmiller.audiobookplayer.ui.theme.audiobookColors
 import java.util.Locale
 import kotlin.math.roundToLong
@@ -357,14 +358,14 @@ private fun PlayerCover(
                     ChevronIcon(
                         direction = HorizontalDirection.Left,
                         size = 24.dp,
-                        color = colors.onInk,
+                        color = OnInk,
                         contentDescription = stringResource(R.string.player_back),
                     )
                 }
                 CoverButton(onClick = onEbook) {
                     BookIcon(
                         size = 24.dp,
-                        color = colors.onInk,
+                        color = OnInk,
                         filled = hasEbook,
                         contentDescription = stringResource(
                             if (hasEbook) R.string.ebook_open else R.string.ebook_link,
