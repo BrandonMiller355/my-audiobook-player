@@ -22,6 +22,7 @@ import com.brandonmiller.audiobookplayer.ebook.EbookParseResult
 import com.brandonmiller.audiobookplayer.ebook.EbookSource
 import com.brandonmiller.audiobookplayer.ebook.ReadingPosition
 import com.brandonmiller.audiobookplayer.ebook.SearchHit
+import com.brandonmiller.audiobookplayer.ebook.TextPosition
 import com.brandonmiller.audiobookplayer.playback.PlaybackService
 import com.brandonmiller.audiobookplayer.playback.ReadAlongMap
 import com.brandonmiller.audiobookplayer.playback.audioChaptersFrom
@@ -259,33 +260,51 @@ class ReaderViewModel(
     fun jumpToBlock(blockIndex: Int, alsoSeek: Boolean = true) {
         _state.update { it.copy(scrollToBlock = blockIndex) }
         if (alsoSeek && _state.value.readAlongMap != null && (_state.value.readAlongEnabled ?: true)) {
-            val previous = _state.value.playbackPositionMs ?: 0L
-            seekFromReaderPosition(blockIndex, previous)
+            // A chosen destination is the start of that block, so the fraction is zero — unlike a
+            // settle, where the fraction is whatever the view came to rest on.
+            seekToTextPosition(blockIndex, fraction = 0f, previousPositionMs = currentPositionMs() ?: 0L)
         }
         saveReadingPosition(blockIndex)
     }
 
-    /** Compute the block that should be on screen for a given playback position. */
-    fun targetBlockForPlaybackPosition(positionMs: Long): Int? {
+    /**
+     * Where the narration is in the text right now, to sub-block precision (design D6, D7).
+     *
+     * Reads the controller directly rather than the sampled [ReaderUiState.playbackPositionMs],
+     * because this is called once per frame and the sample only refreshes four times a second.
+     * `MediaController.currentPosition` extrapolates from the last position update using the
+     * elapsed clock, so reading it per frame yields a continuously advancing value — which is what
+     * lets the glide be smooth without polling the session any harder.
+     */
+    fun currentTextPosition(): TextPosition? {
         val map = _state.value.readAlongMap ?: return null
         val book = _state.value.book ?: return null
-        val chars = map.charsForMs(positionMs)
-        return book.blockIndexForAbsoluteChars(chars)
+        val ctrl = controller ?: return null
+        return book.textPositionForAbsoluteChars(map.charsForMs(ctrl.currentPosition))
     }
+
+    /** Where playback is now, for capturing the position a settle-seek is about to move away from. */
+    fun currentPositionMs(): Long? = controller?.currentPosition
 
     private var lastSeekPreviousMs = 0L
 
-    fun seekFromReaderPosition(firstVisibleBlock: Int, previousPositionMs: Long): Boolean {
+    /**
+     * Moves the audio to wherever the reader is now, given the text position the caller measured
+     * from `layoutInfo` (design D6 — the caller owns that measurement because only the composable
+     * can see rendered heights).
+     *
+     * Returns whether a seek actually happened: a move under the dead zone is not one (D5).
+     */
+    fun seekToTextPosition(blockIndex: Int, fraction: Float, previousPositionMs: Long): Boolean {
         val map = _state.value.readAlongMap ?: return false
         val book = _state.value.book ?: return false
         val ctrl = controller ?: return false
 
-        val position = book.positionOf(firstVisibleBlock)
-        val chars = position.charOffset + book.absoluteCharsAt(firstVisibleBlock)
+        val blockLength = book.blocks.getOrNull(blockIndex)?.text?.length ?: 0
+        val chars = book.absoluteCharsAt(blockIndex) + (blockLength * fraction).toInt()
         val newPositionMs = map.msForChars(chars)
 
-        val delta = kotlin.math.abs(newPositionMs - previousPositionMs)
-        if (delta < SEEK_DEAD_ZONE_MS) return false
+        if (kotlin.math.abs(newPositionMs - previousPositionMs) < SEEK_DEAD_ZONE_MS) return false
 
         val wasPlaying = ctrl.isPlaying
         ctrl.seekTo(newPositionMs)

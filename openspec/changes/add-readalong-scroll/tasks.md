@@ -90,7 +90,7 @@ Reversing `add-ebook-companion` design D8, which had the reader deliberately ign
       chapter spanning the whole file
 - [x] 5.3 Drive the scroll from the sampled position: glide toward the fractional target when it is on
       or near screen, jump with `scrollToItem` when it is far (D7)
-- [ ] 5.4 Compute the fractional target to sub-block precision from `layoutInfo`, rather than to the
+- [x] 5.4 Compute the fractional target to sub-block precision from `layoutInfo`, rather than to the
       first visible block (D6)
 - [ ] 5.5 Open the reader at the audio position rather than the saved reading position while read-along
       is on, and stop writing a separate reading position while it is on (D11)

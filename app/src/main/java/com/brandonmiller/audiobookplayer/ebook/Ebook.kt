@@ -67,6 +67,15 @@ data class ReadingPosition(val spineIndex: Int, val charOffset: Int) {
     }
 }
 
+/**
+ * A place in the text finer than a block: which block, and how far into it as `0f..1f`.
+ *
+ * Distinct from [ReadingPosition], which addresses the *stored* place and is deliberately coarse so
+ * it survives a font change. This one addresses the place on *screen* right now, and is measured
+ * against the block's rendered height, so it does not survive anything — nor does it need to.
+ */
+data class TextPosition(val blockIndex: Int, val fraction: Float)
+
 /** A parsed book: the whole text as blocks, plus its own table of contents. */
 data class Ebook(
     val title: String,
@@ -133,6 +142,28 @@ data class Ebook(
         val found = characterPrefixSums.binarySearch(chars)
         val index = if (found >= 0) found else -found - 2
         return index.coerceIn(0, blocks.size - 1)
+    }
+
+    /**
+     * The same lookup as [blockIndexForAbsoluteChars], but keeping the remainder rather than
+     * discarding it (`add-readalong-scroll` design D6).
+     *
+     * The remainder is the whole point. A block is a paragraph, and a long one is over thirty
+     * seconds of narration, so a target rounded to a block start does not move at all while that
+     * paragraph is read and then moves all at once — which is what auto-scroll looked like before
+     * this existed.
+     */
+    fun textPositionForAbsoluteChars(chars: Int): TextPosition {
+        if (blocks.isEmpty()) return TextPosition(0, 0f)
+        val index = blockIndexForAbsoluteChars(chars)
+        val length = blocks[index].text.length
+        // A zero-length block — a rule, say — has no inside to be partway through.
+        val fraction = if (length <= 0) {
+            0f
+        } else {
+            ((chars - characterPrefixSums[index]).toFloat() / length).coerceIn(0f, 1f)
+        }
+        return TextPosition(index, fraction)
     }
 
     /**

@@ -59,6 +59,53 @@ class EbookCharacterPrefixSumsTest {
         assertTrue("expected well under a second, took ${elapsed}ms", elapsed < 200)
     }
 
+    /**
+     * The property the glide rests on (design D6, D7): the target has to keep moving *within* a
+     * block. Quantizing to the block start is what made the page sit still through a paragraph and
+     * then lurch, so advancing one character must advance the answer.
+     */
+    @Test
+    fun `the fractional position advances within a block rather than only between blocks`() {
+        val book = bookOf("a".repeat(100), "b".repeat(100))
+
+        val quarter = book.textPositionForAbsoluteChars(125)
+        val half = book.textPositionForAbsoluteChars(150)
+
+        assertEquals(1, quarter.blockIndex)
+        assertEquals(1, half.blockIndex)
+        assertEquals(0.25f, quarter.fraction, 0.001f)
+        assertEquals(0.5f, half.fraction, 0.001f)
+        assertTrue("must be strictly increasing inside one block", half.fraction > quarter.fraction)
+    }
+
+    @Test
+    fun `the fractional position lands on block boundaries exactly`() {
+        val book = bookOf("a".repeat(100), "b".repeat(100))
+
+        assertEquals(TextPosition(0, 0f), book.textPositionForAbsoluteChars(0))
+        assertEquals(TextPosition(1, 0f), book.textPositionForAbsoluteChars(100))
+    }
+
+    /** A rule or an empty paragraph has no inside, so there is no fraction to be partway through. */
+    @Test
+    fun `a zero-length block reports no fraction rather than dividing by zero`() {
+        val book = bookOf("a".repeat(50), "", "b".repeat(50))
+
+        val position = book.textPositionForAbsoluteChars(50)
+
+        assertEquals(0f, position.fraction, 0.001f)
+    }
+
+    @Test
+    fun `positions past the end clamp rather than running off`() {
+        val book = bookOf("a".repeat(100))
+
+        val position = book.textPositionForAbsoluteChars(10_000)
+
+        assertEquals(0, position.blockIndex)
+        assertEquals(1f, position.fraction, 0.001f)
+    }
+
     private fun bookOf(vararg texts: String) = Ebook(
         title = "Book",
         blocks = texts.mapIndexed { index, text ->

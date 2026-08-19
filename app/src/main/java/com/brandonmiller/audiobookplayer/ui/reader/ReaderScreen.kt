@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.SnackbarHost
@@ -28,9 +29,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -54,6 +60,7 @@ import com.brandonmiller.audiobookplayer.data.ReadingSettings
 import com.brandonmiller.audiobookplayer.ebook.Block
 import com.brandonmiller.audiobookplayer.ebook.BlockKind
 import com.brandonmiller.audiobookplayer.ebook.Emphasis
+import com.brandonmiller.audiobookplayer.ebook.TextPosition
 import com.brandonmiller.audiobookplayer.ui.library.OpenPersistableDocument
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
@@ -100,7 +107,27 @@ fun ReaderScreen(
     var settingsOpen by remember { mutableStateOf(false) }
     var contentsOpen by remember { mutableStateOf(false) }
     var searchOpen by remember { mutableStateOf(false) }
-    var lastScrollTime by remember { mutableStateOf(0L) }
+
+    // The loop guard (design D4). Set only by a scroll the user's finger caused, so the reader
+    // following the narration never looks like the user moving the text. A flick reports
+    // `UserInput` for the drag and `SideEffect` for the fling after it, so setting on `UserInput`
+    // and clearing after settle covers the whole gesture; a programmatic scroll reports only
+    // `SideEffect` and so never sets it.
+    var userScrolled by remember { mutableStateOf(false) }
+    val userInputGate = remember {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                if (source == NestedScrollSource.UserInput) userScrolled = true
+                return Offset.Zero
+            }
+        }
+    }
+
+    val readAlongActive = state.readAlongMap != null && (state.readAlongEnabled ?: true)
 
     val pickEbook = rememberLauncherForActivityResult(OpenPersistableDocument()) { uri ->
         uri?.let(viewModel::changeEbook)
@@ -132,39 +159,58 @@ fun ReaderScreen(
         }
     }
 
+    // Settle. Gated on the flag rather than on `isScrollInProgress` alone, because the reader
+    // scrolls itself constantly while following the narration and every one of those steps also
+    // reports a settle (design D4). Without the gate this both seeks the audio backward forever and
+    // writes the reading position once a frame.
     LaunchedEffect(restored) {
         if (!restored) return@LaunchedEffect
-        var wasScrolling = false
         snapshotFlow { listState.isScrollInProgress }
-            .collect { isScrolling ->
-                if (isScrolling) {
-                    wasScrolling = true
-                    lastScrollTime = System.currentTimeMillis()
-                } else if (wasScrolling && state.readAlongMap != null && (state.readAlongEnabled ?: true)) {
-                    val previous = state.playbackPositionMs ?: 0L
-                    val didSeek = viewModel.seekFromReaderPosition(listState.firstVisibleItemIndex, previous)
-                    wasScrolling = false
+            .drop(1)
+            .filter { !it }
+            .collect {
+                if (!userScrolled) return@collect
+                userScrolled = false
+
+                val anchor = listState.textPositionAtAnchor() ?: return@collect
+                if (state.readAlongMap != null && (state.readAlongEnabled ?: true)) {
+                    viewModel.seekToTextPosition(
+                        blockIndex = anchor.blockIndex,
+                        fraction = anchor.fraction,
+                        previousPositionMs = viewModel.currentPositionMs() ?: 0L,
+                    )
                 }
-                if (!isScrolling) {
-                    viewModel.saveReadingPosition(listState.firstVisibleItemIndex)
-                }
+                viewModel.saveReadingPosition(anchor.blockIndex)
             }
     }
 
-    LaunchedEffect(state.readAlongMap, state.playbackPositionMs, state.readAlongEnabled) {
-        val map = state.readAlongMap ?: return@LaunchedEffect
-        val posMs = state.playbackPositionMs ?: return@LaunchedEffect
-        if ((state.readAlongEnabled ?: true) == false) return@LaunchedEffect
-        if (listState.isScrollInProgress) return@LaunchedEffect
+    // The glide (design D7). Runs per frame rather than per position sample: the target has to
+    // advance by a fraction of a pixel at a time for the page to read as moving rather than
+    // stepping, and a 250ms sample cannot express that. `currentTextPosition` extrapolates from the
+    // controller, so the value it returns is genuinely continuous between samples.
+    LaunchedEffect(readAlongActive, state.book) {
+        if (!readAlongActive) return@LaunchedEffect
+        while (true) {
+            withFrameNanos { }
+            // Yield the whole gesture to the user, drag and fling alike, rather than fighting it.
+            if (listState.isScrollInProgress && userScrolled) continue
 
-        val target = viewModel.targetBlockForPlaybackPosition(posMs)
-        if (target == null || target == listState.firstVisibleItemIndex) return@LaunchedEffect
+            val target = viewModel.currentTextPosition() ?: continue
+            val info = listState.layoutInfo
+            val onScreen = info.visibleItemsInfo.firstOrNull { it.index == target.blockIndex }
 
-        val distance = (target - listState.firstVisibleItemIndex) * 50
-        if (distance.absoluteValue > 200) {
-            listState.scrollToItem(target)
-        } else if (distance != 0) {
-            listState.scrollBy(distance.toFloat())
+            if (onScreen == null) {
+                // Off screen — a seek, a chapter skip, or opening the reader. Nothing to glide
+                // toward, because `layoutInfo` cannot measure what it has not laid out.
+                listState.scrollToItem(target.blockIndex)
+                continue
+            }
+
+            val targetPx = onScreen.offset + onScreen.size * target.fraction
+            val delta = targetPx - info.anchorPx()
+            // Sub-pixel deltas are the normal case at reading speed; LazyList accumulates them, so
+            // they must not be rounded away. The threshold only suppresses idle jitter while paused.
+            if (delta.absoluteValue > 0.01f) listState.scrollBy(delta)
         }
     }
 
@@ -196,7 +242,12 @@ fun ReaderScreen(
             )
 
             else -> state.book?.let { book ->
-                ReaderText(blocks = book.blocks, settings = state.settings, listState = listState)
+                ReaderText(
+                    blocks = book.blocks,
+                    settings = state.settings,
+                    listState = listState,
+                    modifier = Modifier.nestedScroll(userInputGate),
+                )
             }
         }
 
@@ -262,6 +313,37 @@ fun ReaderScreen(
 }
 
 /**
+ * Where on screen the narrated word is held.
+ *
+ * A third of the way down rather than at the top edge: reading happens a little below the top, and
+ * an anchor at zero would keep the current sentence flush against the bezel with the whole viewport
+ * of already-read text below it.
+ */
+private const val ANCHOR_FRACTION = 0.33f
+
+/** The anchor line in the same coordinate space `LazyListItemInfo.offset` is measured in. */
+private fun LazyListLayoutInfo.anchorPx(): Float =
+    viewportStartOffset + (viewportEndOffset - viewportStartOffset) * ANCHOR_FRACTION
+
+/**
+ * What the reader is showing at the anchor, to sub-block precision (design D6).
+ *
+ * The reverse of the glide: it reads the rendered heights back out of `layoutInfo` to say how far
+ * into the anchored block the anchor line falls. `firstVisibleItemIndex` is what this replaces, and
+ * the difference matters because a settle now seeks — a 400-word paragraph rounded to its start is
+ * over thirty seconds of narration thrown away.
+ */
+private fun LazyListState.textPositionAtAnchor(): TextPosition? {
+    val info = layoutInfo
+    val anchor = info.anchorPx()
+    val item = info.visibleItemsInfo.lastOrNull { it.offset <= anchor }
+        ?: info.visibleItemsInfo.firstOrNull()
+        ?: return null
+    val fraction = if (item.size <= 0) 0f else ((anchor - item.offset) / item.size).coerceIn(0f, 1f)
+    return TextPosition(item.index, fraction)
+}
+
+/**
  * The window properties reading needs: the screen stays on, the brightness is the user's, and the
  * system bars match the page. All three are restored on the way out — the Player's own
  * `LightStatusBarIcons` takes the same shape and for the same reason.
@@ -317,10 +399,11 @@ private fun ReaderText(
     blocks: List<Block>,
     settings: ReadingSettings,
     listState: LazyListState,
+    modifier: Modifier = Modifier,
 ) {
     LazyColumn(
         state = listState,
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 72.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
