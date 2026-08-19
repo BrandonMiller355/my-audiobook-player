@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.brandonmiller.audiobookplayer.R
 import com.brandonmiller.audiobookplayer.ui.CollapseIcon
+import com.brandonmiller.audiobookplayer.ui.IconTooltip
 import com.brandonmiller.audiobookplayer.ui.formatChapterLength
 import com.brandonmiller.audiobookplayer.ui.formatSpeed
 import com.brandonmiller.audiobookplayer.ui.theme.AudiobookType
@@ -142,18 +143,20 @@ private fun MiniPlayerHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .clickable(onClick = onCollapse),
-                contentAlignment = Alignment.Center,
-            ) {
-                CollapseIcon(
-                    size = 26.dp,
-                    color = colors.ink,
-                    contentDescription = stringResource(R.string.player_sheet_collapse),
-                )
+            IconTooltip(stringResource(R.string.player_sheet_collapse)) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .clickable(onClick = onCollapse),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CollapseIcon(
+                        size = 26.dp,
+                        color = colors.ink,
+                        contentDescription = stringResource(R.string.player_sheet_collapse),
+                    )
+                }
             }
 
             Column(

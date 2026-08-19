@@ -56,8 +56,10 @@ import com.brandonmiller.audiobookplayer.ebook.NavEntry
 import com.brandonmiller.audiobookplayer.ebook.SearchHit
 import com.brandonmiller.audiobookplayer.ui.ChevronIcon
 import com.brandonmiller.audiobookplayer.ui.HorizontalDirection
+import com.brandonmiller.audiobookplayer.ui.IconTooltip
 import com.brandonmiller.audiobookplayer.ui.PauseIcon
 import com.brandonmiller.audiobookplayer.ui.PlayIcon
+import com.brandonmiller.audiobookplayer.ui.ReadAlongIcon
 import com.brandonmiller.audiobookplayer.ui.SearchIcon
 
 /**
@@ -116,63 +118,87 @@ fun ReaderChrome(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ChromeButton(onClick = onBack) {
-                    ChevronIcon(
-                        direction = HorizontalDirection.Left,
-                        size = 24.dp,
-                        color = ReaderChromeInk,
-                        contentDescription = stringResource(R.string.reader_back),
-                    )
+                IconTooltip(stringResource(R.string.reader_back)) {
+                    ChromeButton(onClick = onBack) {
+                        ChevronIcon(
+                            direction = HorizontalDirection.Left,
+                            size = 24.dp,
+                            color = ReaderChromeInk,
+                            contentDescription = stringResource(R.string.reader_back),
+                        )
+                    }
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ChromeButton(onClick = onPlayPause) {
-                        if (isPlaying) {
-                            PauseIcon(20.dp, ReaderChromeInk, stringResource(R.string.player_pause))
-                        } else {
-                            PlayIcon(20.dp, ReaderChromeInk, stringResource(R.string.player_play))
+                    val playPauseLabel = stringResource(
+                        if (isPlaying) R.string.player_pause else R.string.player_play,
+                    )
+                    IconTooltip(playPauseLabel) {
+                        ChromeButton(onClick = onPlayPause) {
+                            if (isPlaying) {
+                                PauseIcon(20.dp, ReaderChromeInk, playPauseLabel)
+                            } else {
+                                PlayIcon(20.dp, ReaderChromeInk, playPauseLabel)
+                            }
                         }
                     }
                     if (canSearch) {
-                        ChromeButton(onClick = onSearch) {
-                            SearchIcon(20.dp, ReaderChromeInk, stringResource(R.string.reader_search))
+                        IconTooltip(stringResource(R.string.reader_search)) {
+                            ChromeButton(onClick = onSearch) {
+                                SearchIcon(20.dp, ReaderChromeInk, stringResource(R.string.reader_search))
+                            }
                         }
                     }
                     if (hasContents) {
-                        ChromeButton(onClick = onContents) {
-                            ContentsGlyph(stringResource(R.string.reader_contents))
+                        IconTooltip(stringResource(R.string.reader_contents)) {
+                            ChromeButton(onClick = onContents) {
+                                ContentsGlyph(stringResource(R.string.reader_contents))
+                            }
                         }
                     }
-                    ChromeButton(onClick = onSettings) {
-                        Text(
-                            text = "Aa",
-                            color = ReaderChromeInk,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Medium,
-                        )
+                    val settingsLabel = stringResource(R.string.reader_settings)
+                    IconTooltip(settingsLabel) {
+                        ChromeButton(onClick = onSettings) {
+                            Text(
+                                text = "Aa",
+                                color = ReaderChromeInk,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.semantics {
+                                    contentDescription = settingsLabel
+                                },
+                            )
+                        }
                     }
                     if (readAlongUnavailable != null) {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(ReaderChromeFill.copy(alpha = 0.5f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = "♪",
-                                color = ReaderChromeInkDim,
-                                fontSize = 18.sp,
-                            )
+                        val reason = stringResource(
+                            when (readAlongUnavailable) {
+                                is ReadAlongUnavailable.NoAudioChapters -> R.string.reader_read_along_no_chapters
+                                is ReadAlongUnavailable.NoTableOfContents -> R.string.reader_read_along_no_toc
+                            },
+                        )
+                        IconTooltip(reason) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(ReaderChromeFill.copy(alpha = 0.5f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                ReadAlongIcon(18.dp, ReaderChromeInkDim, reason)
+                            }
                         }
                     } else {
                         val isEnabled = readAlongEnabled ?: true
-                        ChromeButton(onClick = onToggleReadAlong) {
-                            Text(
-                                text = "♪",
-                                color = if (isEnabled) ReaderChromeInk else ReaderChromeInkDim,
-                                fontSize = 18.sp,
-                            )
+                        val label = stringResource(R.string.reader_read_along)
+                        IconTooltip(label) {
+                            ChromeButton(onClick = onToggleReadAlong) {
+                                ReadAlongIcon(
+                                    size = 18.dp,
+                                    color = if (isEnabled) ReaderChromeInk else ReaderChromeInkDim,
+                                    contentDescription = label,
+                                )
+                            }
                         }
                     }
                 }

@@ -220,6 +220,23 @@ fun SearchIcon(size: Dp, color: Color, contentDescription: String?, modifier: Mo
 }
 
 /**
+ * A single eighth note — the read-along toggle (`add-readalong-scroll` design D9's control).
+ *
+ * Drawn to match the rest of this set rather than left as the `"♪"` glyph the first cut used:
+ * that character comes from whatever font is active, so its weight and optical size never quite
+ * agreed with a stroke drawn to [GRID], and it was the one control here that didn't look like it
+ * belonged to the others.
+ */
+@Composable
+fun ReadAlongIcon(size: Dp, color: Color, contentDescription: String?, modifier: Modifier = Modifier) {
+    IconCanvas(size, contentDescription, modifier) { unit, stroke ->
+        drawLine(color, Offset(14f * unit, 4f * unit), Offset(14f * unit, 16f * unit), stroke.width, StrokeCap.Round)
+        drawLine(color, Offset(14f * unit, 4f * unit), Offset(19f * unit, 6f * unit), stroke.width, StrokeCap.Round)
+        drawOval(color, topLeft = Offset(9f * unit, 15f * unit), size = Size(5f * unit, 4f * unit))
+    }
+}
+
+/**
  * The shared frame: a square canvas of [size], the pixel length of one grid unit, and a [Stroke]
  * already carrying the round caps and joins every icon here uses.
  */

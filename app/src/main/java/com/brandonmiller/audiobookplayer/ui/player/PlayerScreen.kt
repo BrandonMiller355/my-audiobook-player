@@ -80,6 +80,7 @@ import com.brandonmiller.audiobookplayer.ui.ChevronIcon
 import com.brandonmiller.audiobookplayer.ui.library.OpenPersistableDocument
 import com.brandonmiller.audiobookplayer.ui.FullBleedBookCover
 import com.brandonmiller.audiobookplayer.ui.HorizontalDirection
+import com.brandonmiller.audiobookplayer.ui.IconTooltip
 import com.brandonmiller.audiobookplayer.ui.PLAYER_COVER_MAX_HEIGHT_FRACTION
 import com.brandonmiller.audiobookplayer.ui.PauseIcon
 import com.brandonmiller.audiobookplayer.ui.PlayIcon
@@ -354,23 +355,26 @@ private fun PlayerCover(
                     .padding(horizontal = 16.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                CoverButton(onClick = onBack) {
-                    ChevronIcon(
-                        direction = HorizontalDirection.Left,
-                        size = 24.dp,
-                        color = OnInk,
-                        contentDescription = stringResource(R.string.player_back),
-                    )
+                IconTooltip(stringResource(R.string.player_back)) {
+                    CoverButton(onClick = onBack) {
+                        ChevronIcon(
+                            direction = HorizontalDirection.Left,
+                            size = 24.dp,
+                            color = OnInk,
+                            contentDescription = stringResource(R.string.player_back),
+                        )
+                    }
                 }
-                CoverButton(onClick = onEbook) {
-                    BookIcon(
-                        size = 24.dp,
-                        color = OnInk,
-                        filled = hasEbook,
-                        contentDescription = stringResource(
-                            if (hasEbook) R.string.ebook_open else R.string.ebook_link,
-                        ),
-                    )
+                val ebookLabel = stringResource(if (hasEbook) R.string.ebook_open else R.string.ebook_link)
+                IconTooltip(ebookLabel) {
+                    CoverButton(onClick = onEbook) {
+                        BookIcon(
+                            size = 24.dp,
+                            color = OnInk,
+                            filled = hasEbook,
+                            contentDescription = ebookLabel,
+                        )
+                    }
                 }
             }
         }
@@ -630,20 +634,22 @@ private fun SeekControl(
     contentDescription: String,
     onClick: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .size(box)
-            .clip(CircleShape)
-            .clickable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        ChevronIcon(
-            direction = direction,
-            size = icon,
-            color = color,
-            doubled = doubled,
-            contentDescription = contentDescription,
-        )
+    IconTooltip(contentDescription) {
+        Box(
+            modifier = Modifier
+                .size(box)
+                .clip(CircleShape)
+                .clickable(enabled = enabled, onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            ChevronIcon(
+                direction = direction,
+                size = icon,
+                color = color,
+                doubled = doubled,
+                contentDescription = contentDescription,
+            )
+        }
     }
 }
 
@@ -663,21 +669,24 @@ internal fun PlayPauseButton(
     onClick: () -> Unit,
 ) {
     val colors = audiobookColors
+    val label = stringResource(if (isPlaying) R.string.player_pause else R.string.player_play)
 
-    Surface(
-        onClick = onClick,
-        enabled = enabled,
-        shape = CircleShape,
-        color = colors.ink,
-        contentColor = colors.onInk,
-        modifier = Modifier.size(size),
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Crossfade(targetState = isPlaying, animationSpec = tween(120), label = "playPause") { playing ->
-                if (playing) {
-                    PauseIcon(iconSize, colors.onInk, stringResource(R.string.player_pause))
-                } else {
-                    PlayIcon(iconSize, colors.onInk, stringResource(R.string.player_play))
+    IconTooltip(label) {
+        Surface(
+            onClick = onClick,
+            enabled = enabled,
+            shape = CircleShape,
+            color = colors.ink,
+            contentColor = colors.onInk,
+            modifier = Modifier.size(size),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Crossfade(targetState = isPlaying, animationSpec = tween(120), label = "playPause") { playing ->
+                    if (playing) {
+                        PauseIcon(iconSize, colors.onInk, label)
+                    } else {
+                        PlayIcon(iconSize, colors.onInk, label)
+                    }
                 }
             }
         }
