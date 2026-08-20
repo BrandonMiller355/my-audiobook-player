@@ -278,28 +278,39 @@ the user pressing play, and the existing `playback` guarantee that opening a boo
 starting it. The reader's chrome already carries play/pause for the case where starting is what the
 owner wants.
 
-### D9: The toggle and the offset are columns on `audiobooks`
+### D9: The offset is a column on `audiobooks`
 
-Two nullable columns via `MIGRATION_4_5`, additive and non-destructive in the same shape as the four
-migrations before it. Per book rather than app-wide because the chapter offset is inherently per book,
-and splitting the pair across two storage mechanisms to make one of them global would be worse than
-either choice alone.
+One nullable column, per book because a chapter offset is inherently per book.
 
 **Rejected: a `readalong` table.** A one-to-one relationship does not need a join, and the same
 argument was already made and settled for the ebook link itself (`add-ebook-companion` D4).
 
-### D10: Unavailability is a stated condition, not a silently inert toggle
+**Superseded, and worth recording because it cost a migration to undo.** This originally carried a
+second column, `readAlongEnabled`, backing a per-book toggle in the reader's chrome. The owner
+rejected the control on the grounds that pausing the audio already stops the text following it,
+which is correct: the glide is driven by the playback position, so a frozen position freezes the
+text. The toggle bought one behavior pause does not — while paused, scrolling still seeks the audio
+— but that is D5's territory, and D5's answer to it is the undo, not a mode switch. A control worth
+a schema column, three gating branches, and a chrome slot has to earn more than that.
 
-Read-along requires chapter marks on the audio side and a navigation document on the ebook side.
-Both absences are states the app already recognizes — `ChapterParseResult.Unchaptered` and the
-existing "this ebook provides no table of contents" case. Neither degrades anything: the book still
-plays, the ebook still reads, and the toggle explains why it is unavailable rather than appearing
-functional and doing nothing.
+`MIGRATION_4_5` still adds the column, because it ran on a real device and history is not
+rewritable; `MIGRATION_5_6` drops it again with a table rebuild.
 
-A book with exactly one chapter mark spanning the whole file counts as unchaptered here, for the same
-reason `M4bChapterParser` already treats it that way — a single anchor pair defines a straight line
-across twelve hours, which is precisely the configuration this change exists because the owner is
-eliminating.
+### D10: Unavailability is not a stated condition
+
+**Superseded along with D9's toggle.** This originally required the app to say *why* read-along was
+unavailable — no chapter marks, or no navigation document — on the grounds that a control which
+appears functional and does nothing is worse than one that explains itself.
+
+That argument was about a *control*. With the toggle gone there is no control to be inert, so there
+is nothing to explain: a book that cannot support read-along simply does not follow, the same way a
+book without an ebook simply has no reader. The owner chose this over rehoming the message.
+
+The two absences are still real, and both are still handled: `buildReadAlongMap` returns null for
+either. A book with exactly one chapter mark spanning the whole file counts as unchaptered here, for
+the same reason `M4bChapterParser` already treats it that way — a single anchor pair defines a
+straight line across twelve hours, which is precisely the configuration this change exists because
+the owner is eliminating. What changed is only that the null is now silent.
 
 ### D11: While read-along is on, the saved reading position is the playback position
 
@@ -373,12 +384,19 @@ connection it needs is already there for play/pause.
 ## Migration Plan
 
 `MIGRATION_4_5` adds two nullable columns to `audiobooks`. Existing rows keep both null, which reads
-as "read-along has never been configured for this book" — the toggle then defaults on for books that
-support it and the offset defaults to zero. No backfill, nothing destructive, and the exported schema
-gains `app/schemas/5.json`.
+as "read-along has never been configured for this book". No backfill, nothing destructive, and the
+exported schema gains `app/schemas/5.json`.
 
-Rollback is turning the toggle off, which restores the previous behavior exactly: the reader stops
-following, the independence guarantee applies again, and the columns sit unread.
+`MIGRATION_5_6` then drops `readAlongEnabled` again after the toggle was cut (D9). It is the only
+migration in this project that is not a plain `ALTER TABLE ADD COLUMN`: SQLite gained `DROP COLUMN`
+in 3.35, which is Android 14, and `minSdk` is 26 — so it rebuilds the table the way SQLite's own
+documentation prescribes. The hazardous statement is `DROP TABLE audiobooks`, because `chapters`
+holds an `ON DELETE CASCADE` foreign key into it; that is safe only because Room runs migrations
+before enabling `PRAGMA foreign_keys`, and `Migration5To6Test` asserts the chapters survive rather
+than trusting it. A second test pins the rebuilt DDL to the committed `6.json`, because hand-written
+SQL that disagrees with the entity migrates fine and then fails schema validation on next open.
+
+There is no rollback switch any more — that was the toggle. Reverting means reverting the change.
 
 ## Open Questions
 

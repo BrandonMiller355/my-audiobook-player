@@ -220,21 +220,70 @@ fun SearchIcon(size: Dp, color: Color, contentDescription: String?, modifier: Mo
 }
 
 /**
- * A single eighth note — the read-along toggle (`add-readalong-scroll` design D9's control).
+ * A numbered list — the reader's table of contents.
  *
- * Drawn to match the rest of this set rather than left as the `"♪"` glyph the first cut used:
- * that character comes from whatever font is active, so its weight and optical size never quite
- * agreed with a stroke drawn to [GRID], and it was the one control here that didn't look like it
- * belonged to the others.
+ * Numbered rather than bulleted, and bulleted rather than barred, because the shape this replaced
+ * was three equal full-width lines: a hamburger, which promises a navigation drawer and opens a
+ * chapter list instead. Numerals say "ordered contents" in a way no arrangement of plain bars can,
+ * and they are what the sheet behind the button actually shows.
+ *
+ * The numerals are drawn rather than set as text for the reason every shape in this file is: a font
+ * glyph brings its own weight and optical size, which never agree with a stroke drawn to [GRID].
+ * They carry a lighter stroke than the rest of the set — at full weight a numeral this small fills
+ * in around its own curves — and sit on a 6.6-unit row pitch, wider than the lines alone would
+ * need, because at the 6-unit pitch the three of them close up into a single vertical mass.
  */
 @Composable
-fun ReadAlongIcon(size: Dp, color: Color, contentDescription: String?, modifier: Modifier = Modifier) {
+fun ContentsIcon(size: Dp, color: Color, contentDescription: String?, modifier: Modifier = Modifier) {
     IconCanvas(size, contentDescription, modifier) { unit, stroke ->
-        drawLine(color, Offset(14f * unit, 4f * unit), Offset(14f * unit, 16f * unit), stroke.width, StrokeCap.Round)
-        drawLine(color, Offset(14f * unit, 4f * unit), Offset(19f * unit, 6f * unit), stroke.width, StrokeCap.Round)
-        drawOval(color, topLeft = Offset(9f * unit, 15f * unit), size = Size(5f * unit, 4f * unit))
+        val numeralStroke = Stroke(width = 1.4f * unit, cap = StrokeCap.Round, join = StrokeJoin.Round)
+        // Row centers, each paired with where its line ends — unequal lengths, so the right edge
+        // stays ragged the way a list of chapter titles is.
+        val rows = listOf(5.2f to 21f, 11.8f to 18f, 18.4f to 20f)
+
+        rows.forEachIndexed { index, (y, lineEnd) ->
+            drawLine(color, Offset(9.5f * unit, y * unit), Offset(lineEnd * unit, y * unit), stroke.width, StrokeCap.Round)
+            drawPath(numeral(index + 1, cx = 4.3f * unit, cy = y * unit, unit = unit), color, style = numeralStroke)
+        }
     }
 }
+
+/**
+ * One of `1`, `2`, `3`, centered on ([cx], [cy]).
+ *
+ * Described around its own center at a nominal 5.6-unit height, then scaled to [NUMERAL_HEIGHT], so
+ * the three share a single set of coordinates and resizing them is one constant.
+ */
+private fun numeral(value: Int, cx: Float, cy: Float, unit: Float): Path {
+    val scale = NUMERAL_HEIGHT / 5.6f * unit
+    fun x(value: Float) = cx + value * scale
+    fun y(value: Float) = cy + value * scale
+    return Path().apply {
+        when (value) {
+            1 -> {
+                // Stem and flag, no foot: a foot would be the only serif in this set.
+                moveTo(x(-1.2f), y(-1.5f))
+                lineTo(x(0.15f), y(-2.8f))
+                lineTo(x(0.15f), y(2.8f))
+            }
+            2 -> {
+                moveTo(x(-1.5f), y(-1.6f))
+                cubicTo(x(-1.3f), y(-3.5f), x(1.9f), y(-3.3f), x(1.5f), y(-1.1f))
+                cubicTo(x(1.3f), y(0.4f), x(-0.5f), y(1.4f), x(-1.6f), y(2.8f))
+                lineTo(x(1.7f), y(2.8f))
+            }
+            else -> {
+                // Two bowls meeting just left of center, where a drawn 3 pinches.
+                moveTo(x(-1.5f), y(-2.1f))
+                cubicTo(x(0.3f), y(-3.6f), x(2.2f), y(-1.6f), x(0.1f), y(-0.15f))
+                cubicTo(x(2.4f), y(0.1f), x(1.4f), y(3.3f), x(-1.5f), y(2.1f))
+            }
+        }
+    }
+}
+
+/** Grid units. Tall enough to read as a numeral, short enough to clear the row above and below. */
+private const val NUMERAL_HEIGHT = 4.6f
 
 /**
  * The shared frame: a square canvas of [size], the pixel length of one grid unit, and a [Stroke]

@@ -91,11 +91,6 @@
     <string name="reader_unavailable_title">Ebook unavailable</string>
     <string name="reader_unavailable_relink">Link a different ebook</string>
 
-    <!-- Read-along -->
-    <string name="reader_read_along">Follow narration</string>
-    <string name="reader_read_along_no_chapters">This audiobook has no chapter marks.</string>
-    <string name="reader_read_along_no_toc">This ebook has no table of contents.</string>
-
     <!-- Reading settings -->
     <string name="reader_text_size">Text size</string>
     <string name="reader_line_spacing">Line spacing</string>

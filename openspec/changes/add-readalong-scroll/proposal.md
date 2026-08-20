@@ -46,16 +46,17 @@ matters and is the reason this does not violate §8.
   back to pairing in order. Where front matter makes the two lists differ — the EPUB has a copyright
   page and a map, the audio has publisher credits — the mismatch is a constant offset, so the
   correction offered is **a single offset control**, not a per-chapter pairing table.
-- **Read-along is a toggle in the reader's chrome**, remembered per book, and defaulting on for a
-  book that supports it.
+- **Read-along has no control.** It is simply on for any book that supports it. Pausing the audio
+  already stops the text following it, which is what a toggle would have been for.
 - **A small movement does not seek.** A settle whose implied jump is under a few seconds is ignored,
   so ordinary scroll adjustments do not produce a stream of micro-seeks against the player.
 - **A seek caused by scrolling can be undone** from a passing message, restoring the previous
   playback position. The reader already hosts a snackbar for rejected picks.
 - **Jumping via the table of contents or a search result behaves exactly like a drag** — one rule
   covers all three deliberate movements of the reader.
-- **Read-along is unavailable, and says so, when it cannot work**: a book whose audio has no chapter
-  marks, or an ebook with no navigation document. Both are already states the app recognizes.
+- **Read-along is silently absent when it cannot work**: a book whose audio has no chapter marks, or
+  an ebook with no navigation document. The reader simply does not follow, and nothing else about the
+  book is affected. With no control to appear inert there is nothing to explain.
 
 ### Non-goals
 
@@ -102,8 +103,8 @@ to guard the build.
 
 - `readalong-sync`: The correspondence between a place in the ebook and a moment in the audio — how
   audio chapters pair to table-of-contents entries, how a position is interpolated in each direction,
-  when scrolling seeks and when it does not, the per-book toggle and chapter offset, and what happens
-  when a book cannot support any of it.
+  when scrolling seeks and when it does not, the per-book chapter offset, and what happens when a
+  book cannot support any of it.
 
 ### Modified Capabilities
 
@@ -129,12 +130,12 @@ per chapter and converting in both directions. No Android types, so it is testab
 over synthetic block lists and chapter spans, the same way `BookTimeline` already is.
 
 **Touched code** — `data/Entities.kt` and `data/Migrations.kt` for the schema; `data/LibraryDao.kt`
-for reading and writing the toggle and the offset; `ebook/Ebook.kt` for chapter block ranges derived
+for reading and writing the offset; `ebook/Ebook.kt` for chapter block ranges derived
 from `NavEntry`; `ui/reader/ReaderViewModel.kt`, which currently tracks only play/pause state and
 must now follow position and issue seeks — reversing `add-ebook-companion` design D8, which chose
 otherwise for the manual tier; `ui/reader/ReaderScreen.kt` for the scroll driving and for
-distinguishing user-initiated movement from programmatic; `ui/reader/ReaderChrome.kt` for the toggle
-and the offset control.
+distinguishing user-initiated movement from programmatic; `ui/reader/ReaderChrome.kt` for the offset
+control.
 
 **A trap worth naming up front** — the reader currently saves its position by watching
 `LazyListState.isScrollInProgress` fall to false. That fires for programmatic scrolls as well as user

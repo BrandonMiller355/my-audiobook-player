@@ -55,11 +55,11 @@ import com.brandonmiller.audiobookplayer.ebook.Ebook
 import com.brandonmiller.audiobookplayer.ebook.NavEntry
 import com.brandonmiller.audiobookplayer.ebook.SearchHit
 import com.brandonmiller.audiobookplayer.ui.ChevronIcon
+import com.brandonmiller.audiobookplayer.ui.ContentsIcon
 import com.brandonmiller.audiobookplayer.ui.HorizontalDirection
 import com.brandonmiller.audiobookplayer.ui.IconTooltip
 import com.brandonmiller.audiobookplayer.ui.PauseIcon
 import com.brandonmiller.audiobookplayer.ui.PlayIcon
-import com.brandonmiller.audiobookplayer.ui.ReadAlongIcon
 import com.brandonmiller.audiobookplayer.ui.SearchIcon
 
 /**
@@ -76,8 +76,6 @@ fun ReaderChrome(
     isPlaying: Boolean,
     hasContents: Boolean,
     canSearch: Boolean,
-    readAlongEnabled: Boolean?,
-    readAlongUnavailable: ReadAlongUnavailable?,
     onBack: () -> Unit,
     onPlayPause: () -> Unit,
     onSearch: () -> Unit,
@@ -85,7 +83,6 @@ fun ReaderChrome(
     onSettings: () -> Unit,
     onChange: () -> Unit,
     onUnlink: () -> Unit,
-    onToggleReadAlong: () -> Unit,
 ) {
     AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
         // Fills the screen, not just its content: the two rows align to opposite edges, so a box
@@ -152,7 +149,7 @@ fun ReaderChrome(
                     if (hasContents) {
                         IconTooltip(stringResource(R.string.reader_contents)) {
                             ChromeButton(onClick = onContents) {
-                                ContentsGlyph(stringResource(R.string.reader_contents))
+                                ContentsIcon(20.dp, ReaderChromeInk, stringResource(R.string.reader_contents))
                             }
                         }
                     }
@@ -170,37 +167,6 @@ fun ReaderChrome(
                             )
                         }
                     }
-                    if (readAlongUnavailable != null) {
-                        val reason = stringResource(
-                            when (readAlongUnavailable) {
-                                is ReadAlongUnavailable.NoAudioChapters -> R.string.reader_read_along_no_chapters
-                                is ReadAlongUnavailable.NoTableOfContents -> R.string.reader_read_along_no_toc
-                            },
-                        )
-                        IconTooltip(reason) {
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                                    .background(ReaderChromeFill.copy(alpha = 0.5f)),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                ReadAlongIcon(18.dp, ReaderChromeInkDim, reason)
-                            }
-                        }
-                    } else {
-                        val isEnabled = readAlongEnabled ?: true
-                        val label = stringResource(R.string.reader_read_along)
-                        IconTooltip(label) {
-                            ChromeButton(onClick = onToggleReadAlong) {
-                                ReadAlongIcon(
-                                    size = 18.dp,
-                                    color = if (isEnabled) ReaderChromeInk else ReaderChromeInkDim,
-                                    contentDescription = label,
-                                )
-                            }
-                        }
-                    }
                 }
             }
 
@@ -215,27 +181,6 @@ fun ReaderChrome(
                 ReaderTextButton(stringResource(R.string.reader_change), onChange)
                 ReaderTextButton(stringResource(R.string.reader_unlink), onUnlink)
             }
-        }
-    }
-}
-
-/** Three stacked lines. Drawn here rather than in `ui/Icons.kt` — nothing else needs it. */
-@Composable
-private fun ContentsGlyph(description: String) {
-    Column(
-        modifier = Modifier
-            .size(24.dp)
-            .semantics { contentDescription = description },
-        verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
-    ) {
-        repeat(3) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(2.dp)
-                    .clip(RoundedCornerShape(1.dp))
-                    .background(ReaderChromeInk),
-            )
         }
     }
 }

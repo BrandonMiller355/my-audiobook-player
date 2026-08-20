@@ -57,13 +57,6 @@ data class AudiobookEntity(
     val ebookSpineIndex: Int? = null,
     val ebookCharOffset: Int? = null,
     /**
-     * Whether the reader follows the narration for this book, or null for "never configured"
-     * (`add-readalong-scroll` design D9). Null defaults to on for a book that supports read-along
-     * rather than meaning off, so a book never gets this column and finds the feature silently
-     * disabled.
-     */
-    val readAlongEnabled: Boolean? = null,
-    /**
      * A correction, in whole chapters, applied on top of the detected chapter-pairing offset
      * (design D3). Null means "use the detected offset unmodified" rather than zero, which would be
      * indistinguishable from a user-entered correction of zero.

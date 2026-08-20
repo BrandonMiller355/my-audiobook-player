@@ -29,6 +29,10 @@ because of finding 5, and D3's structural filter was widened because of finding 
 - [x] 2.3 Add a migration test asserting a version 4 database opens at version 5 with existing rows
       intact and both new columns null
 - [x] 2.4 Add `LibraryDao` reads and writes for the flag and the offset
+- [x] 2.5 Drop the enabled flag again after the owner cut the toggle (D9). `MIGRATION_5_6` rebuilds
+      `audiobooks` without it — no `DROP COLUMN` below SQLite 3.35 — and `Migration5To6Test` asserts
+      the chapters survive the `DROP TABLE` despite their cascading foreign key, and that the
+      rebuilt DDL still matches the committed `6.json`
 
 ## 3. The map
 
@@ -85,16 +89,15 @@ Reversing `add-ebook-companion` design D8, which had the reader deliberately ign
 
 - [x] 5.1 Have `ReaderViewModel` follow playback position as well as play/pause, sampling at the modest
       rate D7 settles on rather than per frame
-- [x] 5.2 Build the map when both the ebook and the book's chapters are available, and expose read-along
-      as unavailable with a reason when either is missing (D10) — including a book whose audio is one
-      chapter spanning the whole file
+- [x] 5.2 Build the map when both the ebook and the book's chapters are available, and leave it null
+      when either is missing — including a book whose audio is one chapter spanning the whole file.
+      Null is now silent rather than a stated reason (D10, superseded)
 - [x] 5.3 Drive the scroll from the sampled position: glide toward the fractional target when it is on
       or near screen, jump with `scrollToItem` when it is far (D7)
 - [x] 5.4 Compute the fractional target to sub-block precision from `layoutInfo`, rather than to the
       first visible block (D6)
 - [ ] 5.5 Open the reader at the audio position rather than the saved reading position while read-along
       is on, and stop writing a separate reading position while it is on (D11)
-- [x] 5.x Gate auto-scroll on readAlongEnabled flag (implemented with toggle control)
 
 ## 6. The audio follows the reader
 
@@ -115,13 +118,15 @@ Reversing `add-ebook-companion` design D8, which had the reader deliberately ign
 
 ## 7. Reader controls
 
-- [x] 7.1 Add the read-along toggle to the reader's chrome, reflecting the stored per-book state and
-      defaulting on for a book that supports it
-- [x] 7.2 Show read-along as unavailable with its reason rather than as an inert control (D10)
+- [~] 7.1 ~~Add the read-along toggle to the reader's chrome~~ — **cut by the owner.** Built, then
+      removed: pausing the audio already stops the text following it, so the control did not earn a
+      schema column, three gating branches, and a chrome slot (D9)
+- [~] 7.2 ~~Show read-along as unavailable with its reason~~ — **cut with 7.1.** With no control to
+      appear inert there is nothing to explain; an unsupported book simply does not follow (D10)
 - [ ] 7.3 Add the chapter offset control, resolving the open question about where it lives — chrome row
       or settings sheet — and note the choice in design.md
-- [x] 7.4 Add the strings for the toggle, the two unavailability reasons, the undo message, and the
-      offset control
+- [x] 7.4 Add the strings the reader controls need. Only the undo message and the offset control
+      remain; the toggle and unavailability strings went with 7.1 and 7.2
 
 ## 8. Specs and documentation
 
@@ -149,7 +154,8 @@ and scroll state, `dumpsys media_session` for playback assertions.
       about 1.6 minutes at the midpoint), and on chapter 5 — at 44 minutes it is the longest segment in
       the book and therefore the worst case for accumulation
 - [ ] 9.6 Confirm the epilogue behaves under D13's rate guard rather than racing through the back matter
-- [ ] 9.7 Confirm a book with no chapter marks and an ebook with no table of contents each report
-      read-along as unavailable while playing and reading normally
+- [ ] 9.7 Confirm a book with no chapter marks and an ebook with no table of contents each play and
+      read normally, with the reader simply not following — one of the owner's older chapterless
+      `H:\eBooks` rips is the case to use
 - [ ] 9.8 Re-examine whether following a search result should seek, now that there is device experience
       to argue from (design.md Open Questions)

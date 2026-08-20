@@ -2,16 +2,33 @@
 
 ### Requirement: The reader follows the narration
 
-While read-along is on, the reader SHALL keep the passage on screen corresponding to the place the
-audio is narrating, moving continuously as the audio advances. The correspondence SHALL be derived
-from how far through a chapter the audio is, measured against the text of that chapter, so that it is
-exact at every chapter boundary and interpolated between them.
+For a book that supports read-along, the reader SHALL keep the passage on screen corresponding to the
+place the audio is narrating, moving continuously as the audio advances. The correspondence SHALL be
+derived from how far through a chapter the audio is, measured against the text of that chapter, so
+that it is exact at every chapter boundary and interpolated between them.
+
+A book supports read-along when its audio carries chapter marks and its ebook provides a table of
+contents. There is no control for it: pausing the audio already stops the text, which is what a
+control would have been for.
 
 #### Scenario: Text moves with the audio
 
-- **WHEN** read-along is on and the audio is playing
+- **WHEN** a book supports read-along and the audio is playing
 - **THEN** the text scrolls forward on its own
 - **AND** the passage on screen is the one being narrated
+
+#### Scenario: A book that cannot support read-along
+
+- **WHEN** the user opens the reader for a book whose audio carries no chapter marks, or whose ebook
+  provides no table of contents
+- **THEN** the text does not follow the narration
+- **AND** the audio still plays normally
+- **AND** the ebook still opens, scrolls, is searchable, and remembers where it was read
+
+#### Scenario: One chapter spanning the whole book
+
+- **WHEN** a book's audio carries a single chapter mark covering the entire book
+- **THEN** it is treated the same as carrying no chapter marks
 
 #### Scenario: Paused audio does not scroll
 
@@ -31,7 +48,7 @@ exact at every chapter boundary and interpolated between them.
 #### Scenario: The audio is moved from somewhere else
 
 - **WHEN** the audio is seeked from the Player, the notification, the lock screen, or a Bluetooth
-  control while read-along is on
+  control while the reader is showing a book that supports read-along
 - **THEN** the reader moves to the place in the text corresponding to the new audio position
 
 #### Scenario: A large jump is not scrolled through
@@ -39,9 +56,9 @@ exact at every chapter boundary and interpolated between them.
 - **WHEN** the audio moves to a place far from what the reader is showing
 - **THEN** the reader moves there directly rather than scrolling through all the intervening text
 
-#### Scenario: Opening the reader while read-along is on
+#### Scenario: Opening the reader for a book that supports read-along
 
-- **WHEN** the user opens the reader for a book with read-along on
+- **WHEN** the user opens the reader for a book that supports read-along
 - **THEN** the reader opens at the place the audio is, rather than at the place last read
 
 #### Scenario: Playback speed does not change the correspondence
@@ -52,9 +69,10 @@ exact at every chapter boundary and interpolated between them.
 
 ### Requirement: Moving the reader moves the audio
 
-While read-along is on, deliberately moving the reader SHALL move the audio to match. A movement is
-deliberate when the user causes it — dragging the page, selecting a table-of-contents entry, or
-following a search result. The reader moving itself to follow the narration SHALL NOT move the audio.
+For a book that supports read-along, deliberately moving the reader SHALL move the audio to match. A
+movement is deliberate when the user causes it — dragging the page, selecting a table-of-contents
+entry, or following a search result. The reader moving itself to follow the narration SHALL NOT move
+the audio.
 
 #### Scenario: Scrolling seeks the audio
 
@@ -90,10 +108,10 @@ following a search result. The reader moving itself to follow the narration SHAL
 - **THEN** the user is offered a way to restore the previous playback position
 - **AND** taking it returns the audio to where it was before the scroll
 
-#### Scenario: Read-along off leaves the audio alone
+#### Scenario: A book that cannot support read-along leaves the audio alone
 
-- **WHEN** read-along is off and the user scrolls, jumps by table of contents, or follows a search
-  result
+- **WHEN** the book does not support read-along and the user scrolls, jumps by table of contents, or
+  follows a search result
 - **THEN** the audio position is unchanged
 
 ### Requirement: A read-along seek does not start or stop playback
@@ -172,62 +190,3 @@ entries with no corresponding audio SHALL contribute nothing rather than shiftin
 - **WHEN** the user has corrected a book's chapter matching and reopens the book later
 - **THEN** the correction is still in effect
 - **AND** another book's matching is unaffected
-
-### Requirement: Read-along is turned on and off per book
-
-The reader SHALL offer a control that turns read-along on and off, remembered per book across
-restarts, and on by default for a book that supports it.
-
-#### Scenario: A book that has never been configured
-
-- **WHEN** the user opens the reader for a book that supports read-along and has never had it
-  configured
-- **THEN** read-along is on
-
-#### Scenario: Turning it off
-
-- **WHEN** the user turns read-along off
-- **THEN** the text stops following the narration
-- **AND** the reader behaves as it does for a book with read-along unavailable
-
-#### Scenario: Turning it back on
-
-- **WHEN** the user turns read-along back on
-- **THEN** the reader moves to the place the audio is
-
-#### Scenario: The setting survives a restart
-
-- **WHEN** the user turns read-along off, force-stops the app, and reopens the reader
-- **THEN** read-along is still off
-
-#### Scenario: The setting is per book
-
-- **WHEN** the user turns read-along off for one book
-- **THEN** other books are unaffected
-
-### Requirement: Read-along states when it cannot work
-
-The app SHALL state that read-along is unavailable, and why, when the audio carries no chapter marks
-or the ebook provides no table of contents, rather than offering a control that appears to work and
-does nothing. Nothing else about the book SHALL be affected.
-
-#### Scenario: The audio has no chapter marks
-
-- **WHEN** the user opens the reader for a book whose audio carries no chapter marks
-- **THEN** read-along is shown as unavailable, with the reason
-
-#### Scenario: One chapter spanning the whole book
-
-- **WHEN** a book's audio carries a single chapter mark covering the entire book
-- **THEN** it is treated the same as carrying no chapter marks
-
-#### Scenario: The ebook has no table of contents
-
-- **WHEN** the linked ebook provides no navigation document
-- **THEN** read-along is shown as unavailable, with the reason
-
-#### Scenario: Everything else still works
-
-- **WHEN** read-along is unavailable for a book
-- **THEN** the audio still plays normally
-- **AND** the ebook still opens, scrolls, and remembers where it was read

@@ -39,12 +39,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Why read-along is not available for this book. */
-sealed interface ReadAlongUnavailable {
-    data object NoAudioChapters : ReadAlongUnavailable
-    data object NoTableOfContents : ReadAlongUnavailable
-}
-
 data class ReaderUiState(
     val loading: Boolean = true,
     val book: Ebook? = null,
@@ -67,14 +61,14 @@ data class ReaderUiState(
     val pickErrorMessage: Int? = null,
     /** Set when the ebook has been unlinked, so the screen leaves rather than showing nothing. */
     val closed: Boolean = false,
-    /** The read-along map, or null if it is not available or not yet built. */
+    /**
+     * The read-along map, or null when this book cannot support it — no chapter marks on the audio
+     * side, or no table of contents on the ebook side. Null simply means the reader does not
+     * follow: there is no control for it, so there is no state to explain to the user either.
+     */
     val readAlongMap: ReadAlongMap? = null,
-    /** Why read-along is unavailable for this book, or null if it is available. */
-    val readAlongUnavailable: ReadAlongUnavailable? = null,
     /** Current playback position in ms, used to drive auto-scroll. */
     val playbackPositionMs: Long? = null,
-    /** Whether read-along is enabled for this book. */
-    val readAlongEnabled: Boolean? = null,
 )
 
 class ReaderViewModel(
@@ -167,17 +161,13 @@ class ReaderViewModel(
                         charOffset = book.ebookCharOffset ?: 0,
                     )
 
-                    val (map, unavailable) = buildReadAlongMap(ebook, book.readAlongChapterOffset ?: 0)
-
                     _state.update {
                         it.copy(
                             loading = false,
                             book = ebook,
                             scrollToBlock = ebook.blockIndexFor(saved),
                             unavailableMessage = null,
-                            readAlongMap = map,
-                            readAlongUnavailable = unavailable,
-                            readAlongEnabled = book.readAlongEnabled,
+                            readAlongMap = buildReadAlongMap(ebook, book.readAlongChapterOffset ?: 0),
                         )
                     }
                 }
@@ -200,25 +190,20 @@ class ReaderViewModel(
      * stored chapter rows, indexed by the same `chapterIndex` the timeline uses: its bounds are
      * built from those same rows, in that order (see `mediaItemsFor`).
      */
-    private suspend fun buildReadAlongMap(
-        ebook: Ebook,
-        chapterOffset: Int = 0,
-    ): Pair<ReadAlongMap?, ReadAlongUnavailable?> {
-        if (ebook.contents.isEmpty()) return null to ReadAlongUnavailable.NoTableOfContents
+    private suspend fun buildReadAlongMap(ebook: Ebook, chapterOffset: Int = 0): ReadAlongMap? {
+        if (ebook.contents.isEmpty()) return null
 
-        val ctrl = controller ?: return null to null
-        val timeline = ctrl.chapterTimeline()
-        val spans = timeline.chapterSpans()
+        val ctrl = controller ?: return null
+        val spans = ctrl.chapterTimeline().chapterSpans()
 
-        if (spans.size <= 1) return null to ReadAlongUnavailable.NoAudioChapters
+        // One span covering the whole file is a book with no chapter marks, not a one-chapter book.
+        if (spans.size <= 1) return null
 
         val titles = withContext(Dispatchers.IO) { dao.chaptersFor(bookId) }
             .associate { it.chapterIndex to it.title }
 
-        val map = matchChapters(audioChaptersFrom(spans, titles), ebook, manualOffset = chapterOffset)
-        if (map.isEmpty()) return null to ReadAlongUnavailable.NoAudioChapters
-
-        return ReadAlongMap(map) to null
+        val anchors = matchChapters(audioChaptersFrom(spans, titles), ebook, manualOffset = chapterOffset)
+        return if (anchors.isEmpty()) null else ReadAlongMap(anchors)
     }
 
     /** Consumed by the screen once it has scrolled, so a recomposition does not scroll again. */
@@ -259,7 +244,7 @@ class ReaderViewModel(
 
     fun jumpToBlock(blockIndex: Int, alsoSeek: Boolean = true) {
         _state.update { it.copy(scrollToBlock = blockIndex) }
-        if (alsoSeek && _state.value.readAlongMap != null && (_state.value.readAlongEnabled ?: true)) {
+        if (alsoSeek && _state.value.readAlongMap != null) {
             // A chosen destination is the start of that block, so the fraction is zero — unlike a
             // settle, where the fraction is whatever the view came to rest on.
             seekToTextPosition(blockIndex, fraction = 0f, previousPositionMs = currentPositionMs() ?: 0L)
@@ -344,14 +329,6 @@ class ReaderViewModel(
         if (player.isPlaying) player.pause() else player.play()
     }
 
-    fun toggleReadAlong() {
-        val current = _state.value.readAlongEnabled ?: false
-        _state.update { it.copy(readAlongEnabled = !current) }
-        viewModelScope.launch(Dispatchers.IO) {
-            dao.updateReadAlongEnabled(bookId, !current)
-        }
-    }
-
     /** Replaces the linked ebook. The reading position goes with the old one; it means nothing here. */
     fun changeEbook(uri: Uri) {
         viewModelScope.launch {
@@ -378,7 +355,6 @@ class ReaderViewModel(
             searchJob?.cancel()
 
             val book = withContext(Dispatchers.IO) { dao.findBook(bookId) }
-            val (map, unavailable) = buildReadAlongMap(result.book, book?.readAlongChapterOffset ?: 0)
 
             _state.update {
                 it.copy(
@@ -388,9 +364,7 @@ class ReaderViewModel(
                     loading = false,
                     searchQuery = "",
                     searchHits = emptyList(),
-                    readAlongMap = map,
-                    readAlongUnavailable = unavailable,
-                    readAlongEnabled = book?.readAlongEnabled,
+                    readAlongMap = buildReadAlongMap(result.book, book?.readAlongChapterOffset ?: 0),
                 )
             }
         }

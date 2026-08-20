@@ -127,7 +127,7 @@ fun ReaderScreen(
         }
     }
 
-    val readAlongActive = state.readAlongMap != null && (state.readAlongEnabled ?: true)
+    val readAlongActive = state.readAlongMap != null
 
     val pickEbook = rememberLauncherForActivityResult(OpenPersistableDocument()) { uri ->
         uri?.let(viewModel::changeEbook)
@@ -173,7 +173,7 @@ fun ReaderScreen(
                 userScrolled = false
 
                 val anchor = listState.textPositionAtAnchor() ?: return@collect
-                if (state.readAlongMap != null && (state.readAlongEnabled ?: true)) {
+                if (readAlongActive) {
                     viewModel.seekToTextPosition(
                         blockIndex = anchor.blockIndex,
                         fraction = anchor.fraction,
@@ -256,8 +256,6 @@ fun ReaderScreen(
             isPlaying = state.isPlaying,
             hasContents = state.book?.contents?.isNotEmpty() == true,
             canSearch = state.book != null,
-            readAlongEnabled = state.readAlongEnabled,
-            readAlongUnavailable = state.readAlongUnavailable,
             onBack = onBack,
             onPlayPause = viewModel::togglePlayPause,
             onSearch = { searchOpen = true },
@@ -265,7 +263,6 @@ fun ReaderScreen(
             onSettings = { settingsOpen = true },
             onChange = { pickEbook.launch(OpenPersistableDocument.EBOOK_MIME_TYPES) },
             onUnlink = viewModel::unlinkEbook,
-            onToggleReadAlong = viewModel::toggleReadAlong,
         )
 
         SnackbarHost(

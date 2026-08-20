@@ -153,9 +153,6 @@ interface LibraryDao {
 
     // ---------------------------------------------------------------- read-along
 
-    @Query("UPDATE audiobooks SET readAlongEnabled = :enabled WHERE id = :audiobookId")
-    suspend fun updateReadAlongEnabled(audiobookId: Long, enabled: Boolean)
-
     @Query("UPDATE audiobooks SET readAlongChapterOffset = :offset WHERE id = :audiobookId")
     suspend fun updateReadAlongChapterOffset(audiobookId: Long, offset: Int)
 }
