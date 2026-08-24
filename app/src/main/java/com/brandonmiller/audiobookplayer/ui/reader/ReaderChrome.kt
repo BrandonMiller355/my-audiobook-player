@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,6 +35,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -222,14 +225,39 @@ fun ReaderTextButton(label: String, onClick: () -> Unit) {
 /**
  * The ebook's own table of contents, indented by depth so parts and the chapters under them stay
  * distinguishable (spike finding 2 — the owner's books nest).
+ *
+ * Opens on the chapter being read, centered and bold, rather than at the top of the book. A
+ * ninety-entry contents list that always starts at entry one asks the reader to scroll to find
+ * where they already are, every time they open it, and the answer is the one thing the sheet
+ * already knows.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContentsSheet(
     entries: List<NavEntry>,
+    currentBlockIndex: Int,
     onDismiss: () -> Unit,
     onSelect: (NavEntry) -> Unit,
 ) {
+    val listState = rememberLazyListState()
+    val currentIndex = remember(entries, currentBlockIndex) { entries.entryIndexAt(currentBlockIndex) }
+
+    // Keyed on `Unit`, so it runs once when the sheet opens: keying it on the position would
+    // re-scroll the list under the reader's finger as the narration advances.
+    LaunchedEffect(Unit) {
+        val index = currentIndex ?: return@LaunchedEffect
+        listState.scrollToItem(index)
+        // That puts the entry against the top edge. Centering it needs the measured row height and
+        // viewport, which exist only once the list has laid out at the new position.
+        withFrameNanos { }
+        val info = listState.layoutInfo
+        val row = info.visibleItemsInfo.firstOrNull { it.index == index } ?: return@LaunchedEffect
+        val viewport = info.viewportEndOffset - info.viewportStartOffset
+        // Negative offset lowers the row. Near either end of the book the list simply runs out of
+        // travel and stops short, which is the right answer — there is nothing to center against.
+        listState.scrollToItem(index, -(viewport - row.size) / 2)
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -245,13 +273,20 @@ fun ContentsSheet(
             return@ModalBottomSheet
         }
 
-        LazyColumn(modifier = Modifier.heightIn(max = 520.dp)) {
-            items(entries) { entry ->
+        LazyColumn(state = listState, modifier = Modifier.heightIn(max = 520.dp)) {
+            itemsIndexed(entries) { index, entry ->
+                val isCurrent = index == currentIndex
                 Text(
                     text = entry.label,
-                    color = if (entry.depth == 0) ReaderChromeInk else ReaderChromeInkDim,
+                    // A nested entry is dimmed to keep it under its part, but not while it is the
+                    // one being read — dim and bold at once reads as a rendering mistake.
+                    color = if (isCurrent || entry.depth == 0) ReaderChromeInk else ReaderChromeInkDim,
                     fontSize = if (entry.depth == 0) 16.sp else 15.sp,
-                    fontWeight = if (entry.depth == 0) FontWeight.Medium else FontWeight.Normal,
+                    fontWeight = when {
+                        isCurrent -> FontWeight.Bold
+                        entry.depth == 0 -> FontWeight.Medium
+                        else -> FontWeight.Normal
+                    },
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
@@ -269,6 +304,20 @@ fun ContentsSheet(
         }
     }
 }
+
+/**
+ * Which entry [blockIndex] falls inside: the one starting nearest at or before it, or `null` when
+ * the reader is in front matter that precedes every entry.
+ *
+ * Nearest rather than last-in-order, because a nav document's play order need not agree with spine
+ * order (spike finding 6) and the list is therefore not guaranteed to climb. Ties go to the later
+ * entry, which is the deeper one where a part and its first chapter start on the same block.
+ */
+private fun List<NavEntry>.entryIndexAt(blockIndex: Int): Int? =
+    withIndex()
+        .filter { it.value.blockIndex <= blockIndex }
+        .maxWithOrNull(compareBy({ it.value.blockIndex }, { it.index }))
+        ?.index
 
 /**
  * Searching the ebook's text.

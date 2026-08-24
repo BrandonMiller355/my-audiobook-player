@@ -106,6 +106,9 @@ fun ReaderScreen(
     var restored by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
     var contentsOpen by remember { mutableStateOf(false) }
+    // Sampled when the sheet opens rather than read during composition: `layoutInfo` is snapshot
+    // state, and observing it here would recompose the whole reader on every frame of every scroll.
+    var contentsAnchorBlock by remember { mutableStateOf(0) }
     var searchOpen by remember { mutableStateOf(false) }
 
     // The loop guard (design D4). Set only by a scroll the user's finger caused, so the reader
@@ -259,7 +262,10 @@ fun ReaderScreen(
             onBack = onBack,
             onPlayPause = viewModel::togglePlayPause,
             onSearch = { searchOpen = true },
-            onContents = { contentsOpen = true },
+            onContents = {
+                contentsAnchorBlock = listState.textPositionAtAnchor()?.blockIndex ?: 0
+                contentsOpen = true
+            },
             onSettings = { settingsOpen = true },
             onChange = { pickEbook.launch(OpenPersistableDocument.EBOOK_MIME_TYPES) },
             onUnlink = viewModel::unlinkEbook,
@@ -274,6 +280,7 @@ fun ReaderScreen(
     if (contentsOpen) {
         ContentsSheet(
             entries = state.book?.contents.orEmpty(),
+            currentBlockIndex = contentsAnchorBlock,
             onDismiss = { contentsOpen = false },
             onSelect = { entry ->
                 viewModel.jumpToBlock(entry.blockIndex)
