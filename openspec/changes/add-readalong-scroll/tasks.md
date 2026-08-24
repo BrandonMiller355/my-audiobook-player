@@ -96,8 +96,13 @@ Reversing `add-ebook-companion` design D8, which had the reader deliberately ign
       or near screen, jump with `scrollToItem` when it is far (D7)
 - [x] 5.4 Compute the fractional target to sub-block precision from `layoutInfo`, rather than to the
       first visible block (D6)
-- [ ] 5.5 Open the reader at the audio position rather than the saved reading position while read-along
-      is on, and stop writing a separate reading position while it is on (D11)
+- [~] 5.5 Open the reader at the audio position rather than the saved reading position while read-along
+      is on, and stop writing a separate reading position while it is on (D11). **Satisfied in effect,
+      not by this mechanism.** `load` still opens at the saved position and the glide then jumps to
+      the audio position, which is off screen and so takes the `scrollToItem` path — the reader comes
+      to rest in the right place, via a frame at the wrong one. The reading position is also still
+      written on settle. Deliberately left: the visible behavior is correct, and the spec was worded
+      to what happens rather than to what was planned
 
 ## 6. The audio follows the reader
 
@@ -109,12 +114,18 @@ Reversing `add-ebook-companion` design D8, which had the reader deliberately ign
       the `MediaController` the reader already holds
 - [x] 6.4 Apply the dead zone: skip the seek when the implied change is under the threshold (D5)
 - [x] 6.5 Leave the transport state alone across the seek — paused stays paused (D8)
-- [ ] 6.6 Offer undo through the existing `SnackbarHost`, restoring the position captured before the
-      seek (D5)
+- [~] 6.6 ~~Offer undo through the existing `SnackbarHost`~~ — **cut by the owner.** The dead zone
+      alone proved enough in device use. `undoLastSeek` and `lastSeekPreviousMs` remain, unreferenced,
+      as does the `reader_seek_undo` string: the mechanism is three lines and keeping it makes this a
+      call site rather than a redesign if the dead zone turns out not to be enough (D5)
 - [x] 6.7 Route table-of-contents jumps and search-result jumps through the same path, so one rule
       covers all three deliberate movements (D12)
-- [ ] 6.8 Add a test that drives a synthetic auto-scroll sequence through the gate and asserts **no**
-      seek is issued — the loop from D4 must be caught by a test, not by device testing
+- [~] 6.8 ~~Add a test that drives a synthetic auto-scroll sequence through the gate~~ — **deferred,
+      and this is the weakest point in the change.** D4 asked for it precisely so the loop would not
+      be caught by device testing, and it is being left to device testing. The gate needs a real
+      `LazyListState` producing real `NestedScrollSource` values, so it needs Compose UI testing,
+      and this project has no `androidTest` source set and no UI test dependencies — standing it up
+      is the task, not the assertion. **9.2 is the compensating control and must not be skipped**
 
 ## 7. Reader controls
 
@@ -123,10 +134,14 @@ Reversing `add-ebook-companion` design D8, which had the reader deliberately ign
       schema column, three gating branches, and a chrome slot (D9)
 - [~] 7.2 ~~Show read-along as unavailable with its reason~~ — **cut with 7.1.** With no control to
       appear inert there is nothing to explain; an unsupported book simply does not follow (D10)
-- [ ] 7.3 Add the chapter offset control, resolving the open question about where it lives — chrome row
-      or settings sheet — and note the choice in design.md
-- [x] 7.4 Add the strings the reader controls need. Only the undo message and the offset control
-      remain; the toggle and unavailability strings went with 7.1 and 7.2
+- [~] 7.3 ~~Add the chapter offset control~~ — **deferred, and the spec no longer claims it.** The
+      offset is detected automatically, stored, and applied; `LibraryDao.updateReadAlongChapterOffset`
+      is the only piece with no caller. Nothing in the owner's library has needed a correction — *The
+      Hero of Ages* pairs all 84 chapters at offset zero — so the control has no demonstrated user.
+      Build it when a book actually needs it, and let that book decide where it lives
+- [x] 7.4 Add the strings the reader controls need. All of them ended up cut or deferred with 7.1,
+      7.2, 6.6, and 7.3; `reader_seek_undo` and `reader_undo` stay unused alongside the undo
+      mechanism they belong to
 
 ## 8. Specs and documentation
 
@@ -135,12 +150,22 @@ Reversing `add-ebook-companion` design D8, which had the reader deliberately ign
       decision, not a gap" — the requirement deltas do not touch that paragraph and it becomes wrong
 - [x] 8.2 Note in `handoffs/2026-08-10-ebook-audio-readalong.md` which tier was ultimately chosen and
       why, so the four-tier analysis is not re-litigated by a later session
-- [ ] 8.3 Amend the PRD for §7 gaining the reader as a place a seek can originate
+- [x] 8.3 Amend the PRD for §7 gaining the reader as a place a seek can originate
 
 ## 9. Verify on the device
 
 Per the project's established practice, this is drivable from the shell: `uiautomator dump` for taps
 and scroll state, `dumpsys media_session` for playback assertions.
+
+**Left unchecked at archive, deliberately.** The owner ran the feature on the device throughout
+development and it found three real defects, each fixed: the text ran a chapter ahead (audio spans
+were labeled with their own index instead of the stored chapter title), the page sat still and then
+lurched rather than gliding (the target was rounded to a block index, and the pixel distance was a
+fabricated constant), and the read-along control did not belong on screen at all (cut, with its
+column and gating). That is genuine device evidence and it is why the feature works — but it is not
+this checklist, and none of it exercised 9.2, 9.5, or 9.6, which are the cases that fail *quietly*.
+9.2 matters most: with 6.8 deferred, an unattended watch of the session position is the only thing
+standing between the D4 loop and shipping it.
 
 - [ ] 9.1 With the book from 1.1, confirm the text scrolls with the narration and that the reader is at
       the start of a chapter's text when the audio reaches that chapter

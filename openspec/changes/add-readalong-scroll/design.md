@@ -236,9 +236,19 @@ Two guards make it safe to live with:
 - **A dead zone.** A settle whose implied jump is under a few seconds does not seek. Ordinary
   adjustment scrolling would otherwise produce a stream of micro-seeks against the player, and a jump
   that small is well inside the map's own error anyway.
-- **An undo.** A settle-seek posts a passing message offering to restore the previous playback
-  position. The reader already hosts a `SnackbarHost` for rejected picks, so this is a message, not a
-  mechanism. It is what makes "glance back at the previous page" recoverable rather than costly.
+- **An undo.** ~~A settle-seek posts a passing message offering to restore the previous playback
+  position.~~ **Cut by the owner before archive, never built.** The dead zone alone proved enough to
+  live with in device use, and the snackbar was judged not worth the screen it would take.
+
+  The plumbing is still there and unreferenced — `ReaderViewModel.lastSeekPreviousMs` captures the
+  position before every seek and `undoLastSeek()` restores it, but nothing calls it, and the
+  `reader_seek_undo` / `reader_undo` strings are unused. Left in place deliberately: it is three
+  lines, it is the whole mechanism, and if the dead zone turns out not to be enough this becomes a
+  snackbar and a call site rather than a redesign.
+
+  Note this interacts with D9's cut toggle. Scrolling while paused still moves the audio, and with
+  both the toggle and the undo gone there is now nothing that stops it. That is the accepted
+  behavior, not an oversight: under D5 the two positions are simply never allowed to disagree.
 
 ### D6: The text position is measured to sub-block precision, not to the first visible block
 

@@ -298,6 +298,12 @@ Examples:
 
 Prefer behavior that feels natural and consistent.
 
+The reader is also a place a seek originates. For a book whose audio carries chapter marks and whose
+linked ebook has a table of contents, scrolling the reader moves the audio to match once scrolling
+settles, as do choosing a table-of-contents entry and following a search result. A movement implying
+a jump of only a few seconds does not seek, and a seek from the reader repositions playback without
+starting or stopping it. See `openspec/specs/readalong-sync/`.
+
 ---
 
 ## 7.4 Chapter Navigation

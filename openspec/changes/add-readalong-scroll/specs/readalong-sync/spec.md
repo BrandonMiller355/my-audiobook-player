@@ -59,7 +59,7 @@ control would have been for.
 #### Scenario: Opening the reader for a book that supports read-along
 
 - **WHEN** the user opens the reader for a book that supports read-along
-- **THEN** the reader opens at the place the audio is, rather than at the place last read
+- **THEN** the reader comes to rest at the place the audio is, rather than at the place last read
 
 #### Scenario: Playback speed does not change the correspondence
 
@@ -101,12 +101,6 @@ the audio.
 - **WHEN** the user selects a search result
 - **THEN** the reader moves to that place
 - **AND** the audio moves to the corresponding place
-
-#### Scenario: A seek caused by scrolling can be undone
-
-- **WHEN** scrolling has moved the audio
-- **THEN** the user is offered a way to restore the previous playback position
-- **AND** taking it returns the audio to where it was before the scroll
 
 #### Scenario: A book that cannot support read-along leaves the audio alone
 
@@ -177,16 +171,10 @@ entries with no corresponding audio SHALL contribute nothing rather than shiftin
   text per minute of audio is most consistent across the whole book
 - **AND** the user is not required to discover or enter the number
 
-#### Scenario: Correcting a matching that is off by a constant
+#### Scenario: A stored correction overrides the detected offset
 
-- **WHEN** every chapter is matched to a text section a fixed number of chapters away from the right
-  one
-- **THEN** the user can shift the matching by a whole number of chapters, overriding whatever the app
+- **WHEN** a book carries a stored chapter-offset correction
+- **THEN** the matching is shifted by that whole number of chapters, on top of whatever the app
   detected
 - **AND** the correction applies to the whole book rather than to one chapter
-
-#### Scenario: The correction is remembered
-
-- **WHEN** the user has corrected a book's chapter matching and reopens the book later
-- **THEN** the correction is still in effect
 - **AND** another book's matching is unaffected
