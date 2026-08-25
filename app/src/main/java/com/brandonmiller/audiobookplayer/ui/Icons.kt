@@ -249,6 +249,22 @@ fun ContentsIcon(size: Dp, color: Color, contentDescription: String?, modifier: 
 }
 
 /**
+ * Three dots stacked vertically — the platform's own word for "everything else this screen does".
+ *
+ * Filled circles rather than stroked rings: at the size this is used a ring closes up into a solid
+ * dot anyway, and the Material glyph it stands in for is filled. The 6.5-unit pitch is what keeps
+ * the three reading as separate marks; closer together they merge into a single dashed stroke.
+ */
+@Composable
+fun OverflowIcon(size: Dp, color: Color, contentDescription: String?, modifier: Modifier = Modifier) {
+    IconCanvas(size, contentDescription, modifier) { unit, _ ->
+        for (y in listOf(5.5f, 12f, 18.5f)) {
+            drawCircle(color, radius = 1.8f * unit, center = Offset(12f * unit, y * unit))
+        }
+    }
+}
+
+/**
  * One of `1`, `2`, `3`, centered on ([cx], [cy]).
  *
  * Described around its own center at a nominal 5.6-unit height, then scaled to [NUMERAL_HEIGHT], so

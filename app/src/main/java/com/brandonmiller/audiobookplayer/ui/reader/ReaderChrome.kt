@@ -15,10 +15,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,7 +26,11 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -44,8 +48,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -58,42 +60,54 @@ import com.brandonmiller.audiobookplayer.ebook.Ebook
 import com.brandonmiller.audiobookplayer.ebook.NavEntry
 import com.brandonmiller.audiobookplayer.ebook.SearchHit
 import com.brandonmiller.audiobookplayer.ui.ChevronIcon
-import com.brandonmiller.audiobookplayer.ui.ContentsIcon
 import com.brandonmiller.audiobookplayer.ui.HorizontalDirection
 import com.brandonmiller.audiobookplayer.ui.IconTooltip
+import com.brandonmiller.audiobookplayer.ui.OverflowIcon
 import com.brandonmiller.audiobookplayer.ui.PauseIcon
 import com.brandonmiller.audiobookplayer.ui.PlayIcon
 import com.brandonmiller.audiobookplayer.ui.SearchIcon
 
 /**
- * The revealed controls: flip back, search, contents, settings, play/pause, and the two
- * ebook-management actions.
+ * The revealed controls: flip back, play/pause, and a menu holding everything else.
  *
  * One revealed layer rather than a fixed bar, because a permanent bar contradicts the point of a
- * black reading page, and because this many controls need somewhere to live that a single corner
- * button cannot provide (`add-ebook-companion` design D7).
+ * black reading page (`add-ebook-companion` design D7). What has changed since that design is where
+ * the rest of the actions live. Six controls spread across two edges — four icons at the top, two
+ * words at the bottom — meant scrims down both ends of the page and a row of words sitting over the
+ * prose, for actions a reader touches once a session at most. They are now behind one overflow
+ * button, which leaves the page with a single strip of chrome at the top and nothing at all over
+ * the text being read.
+ *
+ * The system bars come and go with this row (see `ReaderWindow`), which is why the top padding is
+ * measured against where the status bar sits rather than whether it is showing: hidden bars report a
+ * zero inset, and reading the live value would start the row flush against the bezel and slide it
+ * down as the bar animates in behind it.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ReaderChrome(
     visible: Boolean,
     isPlaying: Boolean,
+    menuOpen: Boolean,
     hasContents: Boolean,
     canSearch: Boolean,
+    onMenuOpenChange: (Boolean) -> Unit,
     onBack: () -> Unit,
     onPlayPause: () -> Unit,
     onSearch: () -> Unit,
     onContents: () -> Unit,
     onSettings: () -> Unit,
+    onBrightness: () -> Unit,
     onChange: () -> Unit,
     onUnlink: () -> Unit,
 ) {
     AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
-        // Fills the screen, not just its content: the two rows align to opposite edges, so a box
-        // sized to its children would put the bottom row directly under the top one.
+        // Fills the screen, not just its content: the row aligns to the top edge, and a box sized to
+        // its child would leave the scrim behind it nothing to stretch across.
         Box(modifier = Modifier.fillMaxSize()) {
-            // The controls sit over live prose, and without these they collide with it — the
-            // bottom row worst, being words over words. The Player's cover solves the same problem
-            // the same way, and for the same reason: one treatment that is safe over any content.
+            // The controls sit over live prose, and without this they collide with it. The Player's
+            // cover solves the same problem the same way, and for the same reason: one treatment
+            // that is safe over any content.
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -101,19 +115,12 @@ fun ReaderChrome(
                     .height(SCRIM_HEIGHT)
                     .background(Brush.verticalGradient(listOf(ReaderScrim, Color.Transparent))),
             )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(SCRIM_HEIGHT)
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, ReaderScrim))),
-            )
 
             Row(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
@@ -142,50 +149,90 @@ fun ReaderChrome(
                             }
                         }
                     }
-                    if (canSearch) {
-                        IconTooltip(stringResource(R.string.reader_search)) {
-                            ChromeButton(onClick = onSearch) {
-                                SearchIcon(20.dp, ReaderChromeInk, stringResource(R.string.reader_search))
+                    // The menu is anchored inside this box rather than to the row: a `DropdownMenu`
+                    // positions itself against its parent, and the row's parent is the whole screen.
+                    Box {
+                        val moreLabel = stringResource(R.string.reader_more)
+                        IconTooltip(moreLabel) {
+                            ChromeButton(onClick = { onMenuOpenChange(true) }) {
+                                OverflowIcon(20.dp, ReaderChromeInk, moreLabel)
                             }
                         }
-                    }
-                    if (hasContents) {
-                        IconTooltip(stringResource(R.string.reader_contents)) {
-                            ChromeButton(onClick = onContents) {
-                                ContentsIcon(20.dp, ReaderChromeInk, stringResource(R.string.reader_contents))
-                            }
-                        }
-                    }
-                    val settingsLabel = stringResource(R.string.reader_settings)
-                    IconTooltip(settingsLabel) {
-                        ChromeButton(onClick = onSettings) {
-                            Text(
-                                text = "Aa",
-                                color = ReaderChromeInk,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.semantics {
-                                    contentDescription = settingsLabel
-                                },
-                            )
-                        }
+                        ReaderMenu(
+                            expanded = menuOpen,
+                            hasContents = hasContents,
+                            canSearch = canSearch,
+                            onDismiss = { onMenuOpenChange(false) },
+                            onSearch = onSearch,
+                            onContents = onContents,
+                            onSettings = onSettings,
+                            onBrightness = onBrightness,
+                            onChange = onChange,
+                            onUnlink = onUnlink,
+                        )
                     }
                 }
             }
-
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
-            ) {
-                ReaderTextButton(stringResource(R.string.reader_change), onChange)
-                ReaderTextButton(stringResource(R.string.reader_unlink), onUnlink)
-            }
         }
     }
+}
+
+/**
+ * Everything the reader does that is not turning pages or starting the audio.
+ *
+ * Words rather than icons, and no icons beside the words either. Half of these — changing the linked
+ * ebook, unlinking it, brightness — have no glyph that says what they do without being learned
+ * first, and a menu where three rows carry a picture and three do not reads as unfinished. A menu is
+ * the one place in this app where a label is free.
+ *
+ * The two ebook-management actions sit below a divider because they are a different kind of thing:
+ * the rest change how this book is being read, those two change which book is linked at all.
+ */
+@Composable
+private fun ReaderMenu(
+    expanded: Boolean,
+    hasContents: Boolean,
+    canSearch: Boolean,
+    onDismiss: () -> Unit,
+    onSearch: () -> Unit,
+    onContents: () -> Unit,
+    onSettings: () -> Unit,
+    onBrightness: () -> Unit,
+    onChange: () -> Unit,
+    onUnlink: () -> Unit,
+) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+        containerColor = ReaderSheet,
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        if (hasContents) {
+            ReaderMenuItem(stringResource(R.string.reader_contents)) { onDismiss(); onContents() }
+        }
+        if (canSearch) {
+            ReaderMenuItem(stringResource(R.string.reader_search)) { onDismiss(); onSearch() }
+        }
+        ReaderMenuItem(stringResource(R.string.reader_settings)) { onDismiss(); onSettings() }
+        ReaderMenuItem(stringResource(R.string.reader_brightness)) { onDismiss(); onBrightness() }
+
+        HorizontalDivider(
+            color = ReaderChromeFill,
+            modifier = Modifier.padding(vertical = 4.dp),
+        )
+
+        ReaderMenuItem(stringResource(R.string.reader_change)) { onDismiss(); onChange() }
+        ReaderMenuItem(stringResource(R.string.reader_unlink)) { onDismiss(); onUnlink() }
+    }
+}
+
+@Composable
+private fun ReaderMenuItem(label: String, onClick: () -> Unit) {
+    DropdownMenuItem(
+        text = { Text(label, fontSize = 15.sp) },
+        onClick = onClick,
+        colors = MenuDefaults.itemColors(textColor = ReaderChromeInk),
+    )
 }
 
 @Composable
@@ -416,10 +463,15 @@ private fun highlight(hit: SearchHit) = buildAnnotatedString {
 }
 
 /**
- * Text size, line spacing, typeface, and brightness.
+ * Text size, line spacing, and typeface.
  *
  * Steppers rather than sliders: each of these has a small number of useful values, and a stepper
  * can be hit without looking, which is the same argument the Player's speed chips answer to.
+ *
+ * Brightness used to be the fourth row here and is now [BrightnessSheet]. It was the odd one out —
+ * the other three change how the book is set, brightness changes the room — and burying it under a
+ * button labeled `Aa` meant the one setting a reader reaches for in the dark was the one hardest to
+ * find.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -429,7 +481,6 @@ fun ReadingSettingsSheet(
     onTextScale: (Float) -> Unit,
     onLineSpacing: (Float) -> Unit,
     onSerif: (Boolean) -> Unit,
-    onBrightness: (Float) -> Unit,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -458,6 +509,40 @@ fun ReadingSettingsSheet(
                 onIncrease = { onLineSpacing(settings.lineSpacing + ReadingSettings.LINE_SPACING_STEP) },
             )
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.reader_typeface), color = ReaderChromeInk, fontSize = 15.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TypefaceChip(stringResource(R.string.reader_typeface_serif), settings.serif) { onSerif(true) }
+                    TypefaceChip(stringResource(R.string.reader_typeface_sans), !settings.serif) { onSerif(false) }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Brightness, on its own, one step from the menu.
+ *
+ * The same stepper it always was and the same sheet the others use — what changed is that it is no
+ * longer three taps deep behind a typography control it has nothing to do with.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BrightnessSheet(
+    settings: ReadingSettings,
+    onDismiss: () -> Unit,
+    onBrightness: (Float) -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = ReaderSheet,
+    ) {
+        Column(modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
             Stepper(
                 label = stringResource(R.string.reader_brightness),
                 value = if (settings.followsSystemBrightness) {
@@ -478,18 +563,6 @@ fun ReadingSettingsSheet(
                     onBrightness(from + ReadingSettings.BRIGHTNESS_STEP)
                 },
             )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.reader_typeface), color = ReaderChromeInk, fontSize = 15.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TypefaceChip(stringResource(R.string.reader_typeface_serif), settings.serif) { onSerif(true) }
-                    TypefaceChip(stringResource(R.string.reader_typeface_sans), !settings.serif) { onSerif(false) }
-                }
-            }
         }
     }
 }

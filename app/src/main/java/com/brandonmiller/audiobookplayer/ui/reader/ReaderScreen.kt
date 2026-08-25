@@ -52,6 +52,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material3.SnackbarResult
@@ -82,8 +84,9 @@ private val ReaderInkDim = Color(0xFFB4B4B4)
 private val ReaderRule = Color(0xFF3A3A3A)
 
 /**
- * Long enough to read a row of six controls and choose one. Four seconds proved too short in device
- * testing — the chrome kept vanishing between deciding and reaching.
+ * Long enough to read the controls and choose one. Four seconds proved too short in device testing —
+ * the chrome kept vanishing between deciding and reaching. The row is shorter now that the rest of
+ * the actions are behind a menu, but the reach is the same and the menu itself holds this open.
  */
 private const val AUTO_HIDE_MS = 6_000L
 
@@ -104,7 +107,9 @@ fun ReaderScreen(
     var chromeVisible by remember { mutableStateOf(true) }
     var revealCount by remember { mutableStateOf(0) }
     var restored by remember { mutableStateOf(false) }
+    var menuOpen by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
+    var brightnessOpen by remember { mutableStateOf(false) }
     var contentsOpen by remember { mutableStateOf(false) }
     // Sampled when the sheet opens rather than read during composition: `layoutInfo` is snapshot
     // state, and observing it here would recompose the whole reader on every frame of every scroll.
@@ -139,7 +144,7 @@ fun ReaderScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val pickError = state.pickErrorMessage?.let { stringResource(it) }
 
-    ReaderWindow(state.settings)
+    ReaderWindow(state.settings, chromeVisible)
 
     LaunchedEffect(state.closed) {
         if (state.closed) onBack()
@@ -217,8 +222,16 @@ fun ReaderScreen(
         }
     }
 
-    LaunchedEffect(chromeVisible, revealCount) {
-        if (!chromeVisible) return@LaunchedEffect
+    // Held open while the menu is: the menu is a popup anchored to a button inside the chrome, and
+    // fading the chrome out from under it would leave it floating over nothing.
+    //
+    // Held open while a sheet is, for the reason the menu is not the only thing riding on this flag
+    // any more: the system bars follow it now, so a timer that fires under an open contents list
+    // takes the navigation bar away from a reader who is still using it. The timer restarts when the
+    // sheet closes, so the six seconds are counted from the last thing the reader actually did.
+    val sheetOpen = contentsOpen || searchOpen || settingsOpen || brightnessOpen
+    LaunchedEffect(chromeVisible, revealCount, menuOpen, sheetOpen) {
+        if (!chromeVisible || menuOpen || sheetOpen) return@LaunchedEffect
         delay(AUTO_HIDE_MS)
         chromeVisible = false
     }
@@ -257,8 +270,10 @@ fun ReaderScreen(
         ReaderChrome(
             visible = chromeVisible,
             isPlaying = state.isPlaying,
+            menuOpen = menuOpen,
             hasContents = state.book?.contents?.isNotEmpty() == true,
             canSearch = state.book != null,
+            onMenuOpenChange = { menuOpen = it },
             onBack = onBack,
             onPlayPause = viewModel::togglePlayPause,
             onSearch = { searchOpen = true },
@@ -267,6 +282,7 @@ fun ReaderScreen(
                 contentsOpen = true
             },
             onSettings = { settingsOpen = true },
+            onBrightness = { brightnessOpen = true },
             onChange = { pickEbook.launch(OpenPersistableDocument.EBOOK_MIME_TYPES) },
             onUnlink = viewModel::unlinkEbook,
         )
@@ -311,6 +327,13 @@ fun ReaderScreen(
             onTextScale = viewModel::setTextScale,
             onLineSpacing = viewModel::setLineSpacing,
             onSerif = viewModel::setSerif,
+        )
+    }
+
+    if (brightnessOpen) {
+        BrightnessSheet(
+            settings = state.settings,
+            onDismiss = { brightnessOpen = false },
             onBrightness = viewModel::setBrightness,
         )
     }
@@ -353,7 +376,7 @@ private fun LazyListState.textPositionAtAnchor(): TextPosition? {
  * `LightStatusBarIcons` takes the same shape and for the same reason.
  */
 @Composable
-private fun ReaderWindow(settings: ReadingSettings) {
+private fun ReaderWindow(settings: ReadingSettings, chromeVisible: Boolean) {
     val view = LocalView.current
     val window = (view.context as? Activity)?.window ?: return
 
@@ -361,16 +384,37 @@ private fun ReaderWindow(settings: ReadingSettings) {
         val controller = WindowCompat.getInsetsController(window, view)
         val previousLightStatus = controller.isAppearanceLightStatusBars
         val previousLightNav = controller.isAppearanceLightNavigationBars
+        val previousBarBehavior = controller.systemBarsBehavior
         controller.isAppearanceLightStatusBars = false
         controller.isAppearanceLightNavigationBars = false
+        // A swipe from either edge brings the bars back for a moment without disturbing the page.
+        // The alternative behavior makes that swipe permanent, which would leave the bars on with
+        // the chrome off — the one combination the reveal gesture is supposed to rule out.
+        controller.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         onDispose {
             controller.isAppearanceLightStatusBars = previousLightStatus
             controller.isAppearanceLightNavigationBars = previousLightNav
+            controller.systemBarsBehavior = previousBarBehavior
+            controller.show(WindowInsetsCompat.Type.systemBars())
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
+    }
+
+    // The clock and the navigation buttons are chrome too. Hiding the reader's own controls while
+    // leaving the system's framing the page defeats the point of a black page: what is left is a
+    // book quoted between two bars. They come and go with the tap that reveals the controls.
+    DisposableEffect(chromeVisible) {
+        val controller = WindowCompat.getInsetsController(window, view)
+        if (chromeVisible) {
+            controller.show(WindowInsetsCompat.Type.systemBars())
+        } else {
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+        }
+        onDispose { }
     }
 
     // A window attribute, not a system setting, so it affects this app only and needs no
