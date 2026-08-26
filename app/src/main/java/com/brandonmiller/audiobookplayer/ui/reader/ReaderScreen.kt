@@ -68,6 +68,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
 import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 
 /**
  * Pure black with white text, in both themes.
@@ -94,6 +95,7 @@ private const val AUTO_HIDE_MS = 6_000L
 fun ReaderScreen(
     bookId: String,
     onBack: () -> Unit,
+    onOpenNotes: (Long) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ReaderViewModel = viewModel(
         factory = ReaderViewModel.factory(LocalContext.current, bookId),
@@ -157,6 +159,14 @@ fun ReaderScreen(
         }
     }
 
+    // Same flow as the Player's mark: the navigation is the confirmation (design D8).
+    LaunchedEffect(state.markTaken) {
+        state.markTaken?.let { noteId ->
+            viewModel.consumeMarkTaken()
+            onOpenNotes(noteId)
+        }
+    }
+
     // Restore where the user was reading, then let scrolling start saving. Ordered on purpose:
     // saving before the restore has happened would write position zero over the saved one.
     LaunchedEffect(state.scrollToBlock) {
@@ -196,8 +206,11 @@ fun ReaderScreen(
     // advance by a fraction of a pixel at a time for the page to read as moving rather than
     // stepping, and a 250ms sample cannot express that. `currentTextPosition` extrapolates from the
     // controller, so the value it returns is genuinely continuous between samples.
-    LaunchedEffect(readAlongActive, state.book) {
-        if (!readAlongActive) return@LaunchedEffect
+    // Gated on `restored` as well: the restore below is also a `scrollToItem`, and two of them
+    // aiming at different blocks on the reader's first frames is a visible fight the user watches.
+    // The audio's place in the text wins in the end either way, so it costs nothing to wait.
+    LaunchedEffect(readAlongActive, state.book, restored) {
+        if (!readAlongActive || !restored) return@LaunchedEffect
         while (true) {
             withFrameNanos { }
             // Yield the whole gesture to the user, drag and fling alike, rather than fighting it.
@@ -205,20 +218,27 @@ fun ReaderScreen(
 
             val target = viewModel.currentTextPosition() ?: continue
             val info = listState.layoutInfo
+            val anchorPx = info.anchorPx()
             val onScreen = info.visibleItemsInfo.firstOrNull { it.index == target.blockIndex }
 
             if (onScreen == null) {
                 // Off screen — a seek, a chapter skip, or opening the reader. Nothing to glide
                 // toward, because `layoutInfo` cannot measure what it has not laid out.
-                listState.scrollToItem(target.blockIndex)
+                //
+                // The offset lands the block on the anchor rather than at the top of the viewport.
+                // `scrollToItem` alone leaves it a third of a screen too high, and the glide's very
+                // next frame reads that as an error to close — so the recovery becomes a jump
+                // forward followed by a jump back up, which is the opposite of following anything.
+                listState.scrollToItem(target.blockIndex, -anchorPx.roundToInt())
                 continue
             }
 
             val targetPx = onScreen.offset + onScreen.size * target.fraction
-            val delta = targetPx - info.anchorPx()
+            val delta = targetPx - anchorPx
             // Sub-pixel deltas are the normal case at reading speed; LazyList accumulates them, so
             // they must not be rounded away. The threshold only suppresses idle jitter while paused.
-            if (delta.absoluteValue > 0.01f) listState.scrollBy(delta)
+            val step = delta * GLIDE_GAIN
+            if (step.absoluteValue > 0.01f) listState.scrollBy(step)
         }
     }
 
@@ -284,6 +304,7 @@ fun ReaderScreen(
             onSettings = { settingsOpen = true },
             onBrightness = { brightnessOpen = true },
             onChange = { pickEbook.launch(OpenPersistableDocument.EBOOK_MIME_TYPES) },
+            onBookmark = viewModel::bookmark,
             onUnlink = viewModel::unlinkEbook,
         )
 
@@ -347,6 +368,19 @@ fun ReaderScreen(
  * of already-read text below it.
  */
 private const val ANCHOR_FRACTION = 0.33f
+
+/**
+ * How much of the distance to the narrated word the glide closes each frame.
+ *
+ * Closing all of it — following the target exactly, which is what this did before — gives the glide
+ * unity gain, and unity gain passes everything through: every wobble in the position the reader
+ * follows arrives on screen at full size, including the backward ones. Closing a fifth of it per
+ * frame averages that away while still settling a real correction inside a few frames.
+ *
+ * The cost is a constant lag behind the target, of roughly one frame's travel divided by this — a
+ * handful of pixels at reading speed, which is well inside the slack the anchor already has.
+ */
+private const val GLIDE_GAIN = 0.2f
 
 /** The anchor line in the same coordinate space `LazyListItemInfo.offset` is measured in. */
 private fun LazyListLayoutInfo.anchorPx(): Float =

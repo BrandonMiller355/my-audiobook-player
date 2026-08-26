@@ -27,6 +27,14 @@
 
     <string name="library_remove_title">Remove %1$s?</string>
     <string name="library_remove_body">Removes the book from your library. Your files stay exactly where they are.</string>
+
+    <!-- Shown only when the book has notes. Notes are the one thing in this app the user wrote
+         themselves, so the one path that destroys them says so first (add-notes-and-bookmarks
+         design D9). -->
+    <plurals name="library_remove_notes">
+        <item quantity="one">It also deletes the %1$d note you took in it. That cannot be undone.</item>
+        <item quantity="other">It also deletes the %1$d notes you took in it. That cannot be undone.</item>
+    </plurals>
     <string name="library_remove_confirm">Remove from library</string>
     <string name="library_remove_cancel">Keep it</string>
 
@@ -56,6 +64,37 @@
     <string name="player_speed_caption">SPEED</string>
     <string name="player_speed_value">%1$s×</string>
 
+    <!-- Notes and bookmarks. The footer's middle third pauses and opens the new note for writing
+         (add-notes-and-bookmarks design D6), so its sub-label states what it has collected. -->
+    <string name="player_mark">Mark</string>
+    <plurals name="player_mark_caption">
+        <item quantity="one">%1$d NOTE</item>
+        <item quantity="other">%1$d NOTES</item>
+    </plurals>
+
+    <!-- Notes screen -->
+    <string name="notes_title">Notes</string>
+
+    <!-- A note's own header line: the chapter as recorded when it was taken, then where it sits in
+         the book. Uppercased where it is drawn, so the chapter title keeps its own casing here. -->
+    <string name="player_chapter_line_note">%1$s · %2$s</string>
+    <string name="notes_back">Back to the player</string>
+    <string name="notes_empty_title">No notes yet.</string>
+    <string name="notes_empty_body">Tap Mark on the player to keep the spot you are listening to. A mark anchors fifteen seconds earlier, so the passage that prompted it plays back with it. Add the words whenever you like.</string>
+    <string name="note_untitled">Tap the dots to write this one up</string>
+    <string name="note_actions">More for this note</string>
+    <string name="note_edit">Edit</string>
+    <string name="note_delete">Delete</string>
+
+    <string name="note_edit_hint">What did you want to remember?</string>
+    <string name="note_edit_save">Keep</string>
+    <string name="note_edit_cancel">Cancel</string>
+
+    <string name="note_delete_title">Delete this note?</string>
+    <string name="note_delete_body">Removes the note and the place it points to. The book and your files are untouched.</string>
+    <string name="note_delete_confirm">Delete note</string>
+    <string name="note_delete_cancel">Keep it</string>
+
     <!-- Chapters sheet -->
     <string name="player_sheet_subtitle">%1$s · %2$d TOTAL</string>
     <string name="player_sheet_collapse">Close chapters</string>
@@ -84,6 +123,7 @@
     <string name="reader_seek_undo">Scrolled the audio. Undo?</string>
     <string name="reader_undo">Undo</string>
     <string name="reader_more">More options</string>
+    <string name="reader_bookmark">Bookmark this spot</string>
     <string name="reader_settings">Text and typeface</string>
     <string name="reader_settings_close">Close settings</string>
     <string name="reader_change">Change ebook</string>

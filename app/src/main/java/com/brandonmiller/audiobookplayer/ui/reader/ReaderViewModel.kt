@@ -15,6 +15,7 @@ import androidx.media3.session.SessionToken
 import com.brandonmiller.audiobookplayer.R
 import com.brandonmiller.audiobookplayer.data.AudiobookDatabase
 import com.brandonmiller.audiobookplayer.data.LibraryDao
+import com.brandonmiller.audiobookplayer.data.NoteEntity
 import com.brandonmiller.audiobookplayer.data.ReadingPreferences
 import com.brandonmiller.audiobookplayer.data.ReadingSettings
 import com.brandonmiller.audiobookplayer.ebook.Ebook
@@ -29,6 +30,7 @@ import com.brandonmiller.audiobookplayer.playback.audioChaptersFrom
 import com.brandonmiller.audiobookplayer.playback.chapterTimeline
 import com.brandonmiller.audiobookplayer.playback.currentLocation
 import com.brandonmiller.audiobookplayer.playback.matchChapters
+import com.brandonmiller.audiobookplayer.playback.noteAnchorFor
 import com.brandonmiller.audiobookplayer.ui.library.UriPermissionHolder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -59,6 +61,8 @@ data class ReaderUiState(
      * message over it rather than a screen that replaces it.
      */
     val pickErrorMessage: Int? = null,
+    /** The note a bookmark just created, carried only long enough to send the reader to it. */
+    val markTaken: Long? = null,
     /** Set when the ebook has been unlinked, so the screen leaves rather than showing nothing. */
     val closed: Boolean = false,
     /**
@@ -92,6 +96,42 @@ class ReaderViewModel(
             _state.update { it.copy(isPlaying = isPlaying) }
             if (isPlaying) startPositionTracking() else stopPositionTracking()
         }
+
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int,
+        ) {
+            // A real move backward — a seek from anywhere, a chapter transition. The clamp exists
+            // to reject the *unreal* ones, so it has to stand aside for this.
+            releasePositionClamp()
+        }
+    }
+
+    /**
+     * The furthest the glide has followed the audio, and the floor it refuses to go below.
+     *
+     * `MediaController.currentPosition` extrapolates from the last position update using the
+     * elapsed clock, and re-bases whenever a fresh update arrives from the session. The corrected
+     * value can land slightly behind what had been extrapolated, so the reported position is not
+     * monotonic even while playback runs straight forward. The glide turns position into a pixel
+     * offset directly, so a regression of a few tens of milliseconds is the page scrolling backward
+     * under a listener who did nothing. Held here rather than in the screen because this is a
+     * property of the position source, not of the scroll that consumes it.
+     *
+     * [releasePositionClamp] drops the floor whenever the audio genuinely moves.
+     */
+    private var followedPositionMs = Long.MIN_VALUE
+
+    private fun followedPosition(player: Player): Long {
+        val reported = player.currentPosition
+        if (reported < followedPositionMs) return followedPositionMs
+        followedPositionMs = reported
+        return reported
+    }
+
+    private fun releasePositionClamp() {
+        followedPositionMs = Long.MIN_VALUE
     }
 
     private fun startPositionTracking() {
@@ -215,6 +255,43 @@ class ReaderViewModel(
         _state.update { it.copy(pickErrorMessage = null) }
     }
 
+    fun consumeMarkTaken() {
+        _state.update { it.copy(markTaken = null) }
+    }
+
+    /**
+     * Bookmarks the spot being read, from the reader's overflow menu. The Player's mark control in
+     * every respect (`add-notes-and-bookmarks` design D6): it pauses, records, and opens the new
+     * entry for writing on the notes screen.
+     *
+     * Anchored against the audio, not the text, because that is what a note stores (design D2) and
+     * what makes an entry taken here interchangeable with one taken on the Player. For a read-along
+     * book the two positions track each other anyway, so the audio anchor is the reading position.
+     */
+    fun bookmark() {
+        val player = controller ?: return
+        val timeline = player.chapterTimeline()
+        val from = player.currentLocation(timeline)
+        player.pause()
+
+        viewModelScope.launch {
+            val titles = withContext(Dispatchers.IO) { dao.chaptersFor(bookId) }.map { it.title }
+            val anchor = noteAnchorFor(timeline, from, titles)
+            val noteId = withContext(Dispatchers.IO) {
+                dao.insertNote(
+                    NoteEntity(
+                        audiobookId = bookId,
+                        mediaItemIndex = anchor.target.mediaItemIndex,
+                        positionMs = anchor.target.positionMs,
+                        chapterTitle = anchor.chapterTitle,
+                        createdAt = System.currentTimeMillis(),
+                    ),
+                )
+            }
+            _state.update { it.copy(markTaken = noteId) }
+        }
+    }
+
     /**
      * Saves where the user is reading. Called when scrolling settles rather than per frame — a
      * write per scroll event would be hundreds of writes for one flick.
@@ -259,13 +336,17 @@ class ReaderViewModel(
      * because this is called once per frame and the sample only refreshes four times a second.
      * `MediaController.currentPosition` extrapolates from the last position update using the
      * elapsed clock, so reading it per frame yields a continuously advancing value — which is what
-     * lets the glide be smooth without polling the session any harder.
+     * lets the glide be smooth without polling the session any harder. [followedPosition] covers
+     * the one way that value is not continuous.
+     *
+     * Fractional throughout: rounding either the character position or the position within the
+     * block would put steps back into a target the glide samples sixty times a second.
      */
     fun currentTextPosition(): TextPosition? {
         val map = _state.value.readAlongMap ?: return null
         val book = _state.value.book ?: return null
         val ctrl = controller ?: return null
-        return book.textPositionForAbsoluteChars(map.charsForMs(ctrl.currentPosition))
+        return book.textPositionForAbsoluteChars(map.charsForMsExact(followedPosition(ctrl)))
     }
 
     /** Where playback is now, for capturing the position a settle-seek is about to move away from. */
@@ -293,6 +374,10 @@ class ReaderViewModel(
 
         val wasPlaying = ctrl.isPlaying
         ctrl.seekTo(newPositionMs)
+        // Here as well as on the discontinuity callback, because that callback arrives a main-thread
+        // pass later and the glide runs every frame: a backward seek left clamped even briefly would
+        // hold the page where it was and then release it in a lurch.
+        releasePositionClamp()
         lastSeekPreviousMs = previousPositionMs
         // D8: seek does not change transport state
         if (!wasPlaying && ctrl.isPlaying) ctrl.pause()
@@ -302,6 +387,7 @@ class ReaderViewModel(
     fun undoLastSeek() {
         val ctrl = controller ?: return
         ctrl.seekTo(lastSeekPreviousMs)
+        releasePositionClamp()
     }
 
     companion object {

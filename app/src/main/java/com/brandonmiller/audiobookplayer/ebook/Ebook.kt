@@ -153,15 +153,28 @@ data class Ebook(
      * paragraph is read and then moves all at once — which is what auto-scroll looked like before
      * this existed.
      */
-    fun textPositionForAbsoluteChars(chars: Int): TextPosition {
+    fun textPositionForAbsoluteChars(chars: Int): TextPosition =
+        textPositionForAbsoluteChars(chars.toDouble())
+
+    /**
+     * [textPositionForAbsoluteChars] taking a position that falls between two characters, which is
+     * what `ReadAlongMap.charsForMsExact` produces.
+     *
+     * The reason is the same one the remainder exists for at all, one level further down. Rounding
+     * the audio's place in the book to a whole character quantizes the fraction to steps of
+     * `1 / blockLength`, and at a frame's resolution that quantization is the whole signal: the
+     * target advances a character at a time roughly fifteen times a second while the glide asks for
+     * it sixty. Keeping the position fractional makes the target genuinely continuous.
+     */
+    fun textPositionForAbsoluteChars(chars: Double): TextPosition {
         if (blocks.isEmpty()) return TextPosition(0, 0f)
-        val index = blockIndexForAbsoluteChars(chars)
+        val index = blockIndexForAbsoluteChars(chars.toInt())
         val length = blocks[index].text.length
         // A zero-length block — a rule, say — has no inside to be partway through.
         val fraction = if (length <= 0) {
             0f
         } else {
-            ((chars - characterPrefixSums[index]).toFloat() / length).coerceIn(0f, 1f)
+            ((chars - characterPrefixSums[index]) / length).toFloat().coerceIn(0f, 1f)
         }
         return TextPosition(index, fraction)
     }

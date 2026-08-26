@@ -59,8 +59,6 @@ Do NOT build any of the following unless explicitly requested later:
 - Chromecast
 - Android Auto
 - Sleep timer
-- Bookmarks
-- Notes
 - EQ
 - Audio normalization
 - Cross-device sync
@@ -95,6 +93,52 @@ Out of scope, and not to be built without a further explicit request:
 All of these are downstream of forced alignment, which is a different project from this one. The
 analysis behind the boundary — four possible approaches, their costs, and why the cheap ones fail
 on this library specifically — is in `handoffs/2026-08-10-ebook-audio-readalong.md`.
+
+---
+
+## 3.2 Notes and bookmarks — what is in and what is not
+
+Notes and bookmarks were both listed above as non-goals, and both were explicitly requested later,
+which is the exception this section allows for. They are struck from the list rather than left
+standing in contradiction to the feature that exists. §20.5 describes the screen.
+
+**They are one feature, not two.** A bookmark is a note whose text has not been written yet; a note
+is a bookmark that got written up. There is one record, one list, and one control that creates
+either. Mark-now-annotate-later is the point rather than a convenience: the driving use is capturing
+a thought mid-run, for a book club discussion later.
+
+In scope, and built:
+
+- Marking the current spot in one tap from the player. The tap pauses the book and opens the new
+  entry for writing, because dictating or typing a note competes with the narration — a dictation
+  key held open against a playing audiobook transcribes the book.
+- Anchoring that mark a fixed fifteen seconds behind the tap, so replaying it begins before the
+  passage that prompted it rather than after it. This is also what makes stopping to write cheap.
+- Keeping an entry with no words written stays a bare mark, which is a bookmark. Backing out of the
+  entry instead discards it, since it was never confirmed.
+- Marking from the reader as well as the player, from the reader's overflow menu, with identical
+  behavior. An entry is anchored against the audio wherever it was taken from, so the two are the
+  same kind of record.
+- Giving a mark text, at any later time, and editing or deleting it.
+- Recording, on the note itself, which chapter it was taken in, so that the list stays truthful even
+  after a book is re-added and its chapters renumber.
+- A per-book list of them, reachable from the player, where selecting one plays the book from there.
+- Removing a book removes its notes with it. Because that is the one path in this app that destroys
+  something the user wrote, the removal confirmation states how many will go.
+
+Out of scope, and not to be built without a further explicit request:
+
+- **Speech recognition or audio recording of any kind.** The original request mentioned dictating
+  notes while running, and that is served by the device keyboard's own microphone key rather than by
+  anything in this app. The app requests no microphone permission and contains no speech code. Both
+  an in-app `SpeechRecognizer` and a recorded voice memo per note were considered and rejected: each
+  requires `RECORD_AUDIO`, which would be the first genuinely invasive permission here.
+- **A mark action on the media notification**, and any note control outside the player and the notes
+  screen.
+- **Note markers on the progress scrubber.**
+- **Searching, tagging, sorting, or exporting notes**, and any list spanning more than one book.
+- **A configurable lead-in.** Fifteen seconds is fixed in source; §20 requires no settings screen.
+- **Editing where a note points.** Its text is editable; its anchor is not.
 
 ---
 
@@ -658,7 +702,8 @@ This schema is only a suggestion. Simpler equivalent storage is acceptable.
 # 20. UI Screens
 
 Three primary screens, plus the Reader in §20.4 — which exists only for books that have an ebook
-linked, and is reached from the Player rather than from navigation of its own.
+linked — and the Notes screen in §20.5. Both are reached from the Player rather than from navigation
+of their own.
 
 ## 20.1 Library Screen
 
@@ -699,6 +744,9 @@ Contains:
 - Back button
 - An ebook control, when §20.4 applies: it links an ebook if none is linked, and otherwise opens
   the Reader
+- A mark control, which in one tap records the current spot, pauses the book, and opens the new
+  entry for writing in §20.5 (§3.2). Playback stays paused afterwards. It is also the only way into
+  §20.5
 
 ## 20.3 Add Audiobook Flow
 
@@ -726,6 +774,30 @@ The screen keeps the display awake while it is shown.
 No general settings screen is required. Reading settings — text size, line spacing, typeface, and
 screen brightness — live in a sheet within the Reader, because they are the only settings the app
 has and they are only meaningful there.
+
+## 20.5 Notes Screen
+
+One book's marks and notes, reached from the Player's mark control, which arrives with the entry it
+just created open for writing. Its scope is §3.2.
+
+Contains:
+
+- Every mark and note for that book, in the order they occur in the book rather than the order they
+  were taken
+- Per entry: the chapter it was taken in, its position in the book, and its text. An entry with no
+  text yet says so rather than showing a blank
+
+Actions:
+
+- Select an entry to play the book from it, returning to the Player. This must not start or stop
+  playback in either direction — a paused book stays paused at the new position
+- Give an entry text, change it, or clear it. Clearing leaves the mark rather than deleting it
+- Delete an entry, confirmed
+
+Back from this screen returns to the Player for the same book, not to the Library.
+
+Note text is an ordinary text field, so dictation is whatever the device keyboard already offers.
+See §3.2: the app itself has no speech recognition and requests no microphone permission.
 
 ---
 

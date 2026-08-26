@@ -3,6 +3,8 @@ package com.brandonmiller.audiobookplayer.playback
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
+import com.brandonmiller.audiobookplayer.data.ChapterEntity
+import com.brandonmiller.audiobookplayer.data.SOURCE_TYPE_M4B
 
 /**
  * Builds a [BookTimeline] from whichever source the loaded book has.
@@ -40,6 +42,48 @@ internal fun Player.chapterTimeline(resolvedDurations: List<Long?> = emptyList()
 
 internal fun Player.currentLocation(timeline: BookTimeline): Location =
     timeline.locate(currentMediaItemIndex, currentPosition)
+
+/**
+ * A [BookTimeline] built from the stored chapter rows instead of from a live player.
+ *
+ * The notes screen needs to turn each note's anchor into a book-wide timestamp
+ * (`add-notes-and-bookmarks` design D12) and has no reason to hold a session open to do it. The rows
+ * are the same source the library's durations come from: an `.m4b`'s ends were parsed exactly at add
+ * time, and a folder book's are written back as the Player resolves them.
+ *
+ * The branch mirrors [mediaItemsFor] on purpose, and on the same field. Media item indices are the
+ * one thing a note's stored anchor cannot survive disagreeing about, so the function that builds the
+ * playlist and the function that reads positions back out of it split on the same condition rather
+ * than on two independent guesses at the book's shape.
+ *
+ * A chapter whose end is not yet known contributes zero, the convention
+ * [BookTimeline.absolutePosition] already documents — the figure is a locator, and it sharpens as
+ * the book resolves.
+ */
+internal fun storedChapterTimeline(sourceType: String, chapters: List<ChapterEntity>): BookTimeline {
+    if (chapters.isEmpty()) return BookTimeline(listOf(ChapterBounds(0, 0, 0, null)))
+
+    if (sourceType == SOURCE_TYPE_M4B) {
+        return BookTimeline(
+            chapterBoundsFrom(
+                startsMs = chapters.map { it.startPositionMs }.toLongArray(),
+                bookDurationMs = chapters.last().endPositionMs ?: 0,
+            ),
+        )
+    }
+
+    return BookTimeline(
+        chapters.mapIndexed { index, chapter ->
+            // One whole file per chapter, so its end is its duration and its start is zero.
+            ChapterBounds(
+                chapterIndex = index,
+                mediaItemIndex = index,
+                startInItemMs = 0,
+                endInItemMs = chapter.endPositionMs,
+            )
+        },
+    )
+}
 
 /** Null for a folder book, whose items carry no bounds — that is how the two shapes are told apart. */
 private fun Player.singleFileChapterBounds(): List<ChapterBounds>? {

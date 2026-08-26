@@ -23,6 +23,13 @@ interface LibraryDao {
      * at media item 0, so nothing matches `chapterIndex < 0` and `lastPositionMs` is already
      * absolute, while a folder book's chapter and media-item indices are equal, so the subquery
      * sums exactly what precedes it (design D4).
+     *
+     * `noteCount` is a correlated subquery and **must not** become a second `LEFT JOIN`. This query
+     * aggregates over the chapter join, so joining a second one-to-many table would multiply the
+     * rows and silently inflate both `chapterCount` and `durationMs`. The subquery is cheap against
+     * `index_notes_audiobookId`, and it is here rather than fetched when the removal sheet opens so
+     * that the confirmation states the count as part of the row it already has
+     * (`add-notes-and-bookmarks` design D9).
      */
     @Query(
         """
@@ -37,7 +44,8 @@ interface LibraryDao {
                    WHERE p.audiobookId = a.id AND p.chapterIndex < a.lastMediaItemIndex
                ) + a.lastPositionMs AS positionMs,
                a.lastPlayedAt AS lastPlayedAt,
-               a.ebookUri IS NOT NULL AS hasEbook
+               a.ebookUri IS NOT NULL AS hasEbook,
+               (SELECT COUNT(*) FROM notes n WHERE n.audiobookId = a.id) AS noteCount
         FROM audiobooks a
         LEFT JOIN chapters c ON c.audiobookId = a.id
         GROUP BY a.id
@@ -155,4 +163,32 @@ interface LibraryDao {
 
     @Query("UPDATE audiobooks SET readAlongChapterOffset = :offset WHERE id = :audiobookId")
     suspend fun updateReadAlongChapterOffset(audiobookId: Long, offset: Int)
+
+    // ---------------------------------------------------------------- notes and bookmarks
+
+    /**
+     * One book's marks and notes, in book order rather than the order they were taken
+     * (`add-notes-and-bookmarks` design D11). Book order is discussion order; chronological order
+     * would interleave a re-listen with a first pass and read as noise.
+     *
+     * Ordering by the stored anchor works for both book shapes without translating it: a folder
+     * book's notes sort by media item and then within it, and an `.m4b`'s all share item 0 and sort
+     * by position alone, which is already the absolute one.
+     */
+    @Query("SELECT * FROM notes WHERE audiobookId = :audiobookId ORDER BY mediaItemIndex ASC, positionMs ASC")
+    fun observeNotes(audiobookId: Long): Flow<List<NoteEntity>>
+
+    /** Returns the new note's id, which is what lets the Player offer to annotate what it just took. */
+    @Insert
+    suspend fun insertNote(note: NoteEntity): Long
+
+    /**
+     * Null clears the text and leaves a bare mark rather than deleting the row (design D1) — the
+     * same record at an earlier stage, not a different kind of thing.
+     */
+    @Query("UPDATE notes SET `text` = :text WHERE id = :noteId")
+    suspend fun updateNoteText(noteId: Long, text: String?)
+
+    @Query("DELETE FROM notes WHERE id = :noteId")
+    suspend fun deleteNote(noteId: Long)
 }

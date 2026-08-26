@@ -46,6 +46,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -546,6 +547,21 @@ private fun RemoveBookSheet(book: LibraryBook, onDismiss: () -> Unit, onConfirm:
                 style = AudiobookType.bodyDialog,
                 color = colors.textSecondary,
             )
+
+            // Only when there are any. Notes are the one thing here the user authored themselves,
+            // and this is the only path that destroys them (add-notes-and-bookmarks design D9) —
+            // but a book with none should not be told about a feature it is not using.
+            if (book.noteCount > 0) {
+                Text(
+                    text = pluralStringResource(
+                        R.plurals.library_remove_notes,
+                        book.noteCount,
+                        book.noteCount,
+                    ),
+                    style = AudiobookType.bodyDialog,
+                    color = colors.textSecondary,
+                )
+            }
 
             Spacer(Modifier.height(12.dp))
 

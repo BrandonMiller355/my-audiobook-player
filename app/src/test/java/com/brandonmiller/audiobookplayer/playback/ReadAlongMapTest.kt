@@ -143,4 +143,51 @@ class ReadAlongMapTest {
         assertEquals(10_000L, map.msForChars(120))
         assertEquals(10_000L, map.msForChars(150))
     }
+
+    // ------------------------------------------------------------------ the glide's target
+
+    @Test
+    fun `the exact position keeps what rounding to a whole character throws away`() {
+        val map = ReadAlongMap(regular)
+
+        // The regular book runs at 0.01 chars/ms, so these land 30% and 70% into character 500.
+        assertEquals(500.3, map.charsForMsExact(50_030), 1e-9)
+        assertEquals(500, map.charsForMs(50_030))
+
+        assertEquals(500.7, map.charsForMsExact(50_070), 1e-9)
+        assertEquals(501, map.charsForMs(50_070))
+    }
+
+    @Test
+    fun `the exact position advances on every frame at reading speed`() {
+        // The regular book runs at 0.01 chars/ms — 10 characters a second, a slow but ordinary
+        // narration pace. At 60fps that is one character every six frames, so a target rounded to
+        // whole characters holds still for five of them. The glide follows this per frame, and a
+        // target that only moves once every six is what a stutter looks like on screen.
+        val map = ReadAlongMap(regular)
+        val frameMs = 1000L / 60
+
+        var previous = map.charsForMsExact(50_000)
+        for (frame in 1..120) {
+            val current = map.charsForMsExact(50_000 + frame * frameMs)
+            assertTrue("frame $frame did not advance: $previous then $current", current > previous)
+            previous = current
+        }
+    }
+
+    @Test
+    fun `the exact position never runs backward as time moves forward`() {
+        // Spans both directions of the D13 guard and both clamps, since a segment that switches
+        // interpolation strategy mid-book is the one place a monotonic map could break.
+        val normal = (0..9).map { i -> ReadAlongAnchor(i * 300_000L, i * 1_340) }
+        val guarded = ReadAlongAnchor(normal.last().absoluteMs + 132_000, normal.last().absoluteChars + 8_768)
+        val map = ReadAlongMap(normal + guarded)
+
+        var previous = map.charsForMsExact(-10_000)
+        for (ms in -10_000L..3_100_000L step 250) {
+            val current = map.charsForMsExact(ms)
+            assertTrue("went backward at ${ms}ms: $previous then $current", current >= previous)
+            previous = current
+        }
+    }
 }
