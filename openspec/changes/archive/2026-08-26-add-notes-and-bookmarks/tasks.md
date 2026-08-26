@@ -96,8 +96,8 @@
 
 - [x] 7.1 Every user-visible string in `res/values/strings.xml` — no literals in composables
 - [x] 7.2 American English throughout, in strings, comments, and the documents in this change
-- [ ] 7.3 Check the Notes screen in both light and dark themes, against the same palette the rest of
-      the app uses
+- [x] 7.3 Check the Notes screen in both light and dark themes, against the same palette the rest of
+      the app uses. Verified by the owner on device, 2026-08-26
 
 ## 8. Specs and documentation
 
@@ -114,29 +114,35 @@
 
 ## 9. Verify on the device
 
+**Verified by the owner on device, 2026-08-26.** Worth noting for anyone reading this later: the
+mark flow changed twice after this checklist was written — it went from fire-and-forget with a
+snackbar to pause-and-open-the-note, and canceling went from keeping a bare mark to discarding the
+entry. 9.3 and 9.9 were rewritten to match before the pass, so what was checked is the behavior that
+shipped, not the behavior originally specified here.
+
 The cases that fail *quietly* are 9.2 and 9.5. An anchor that is off by the lead-in still produces a
 note that seeks somewhere plausible, and a chapter title taken from the tap position rather than the
 anchor is wrong only on the entries that cross a boundary — neither looks like a bug in casual use,
 and both make the feature slightly useless in exactly the situation it was built for.
 
-- [ ] 9.1 Mark from the Player on a folder book and on a chaptered `.m4b`, and confirm both entries
+- [x] 9.1 Mark from the Player on a folder book and on a chaptered `.m4b`, and confirm both entries
       appear on the Notes screen in book order
-- [ ] 9.2 Mark at a known moment — note what is being said — then play the entry back and confirm the
+- [x] 9.2 Mark at a known moment — note what is being said — then play the entry back and confirm the
       passage that prompted it plays, rather than the silence after it
-- [ ] 9.3 Confirm marking mid-playback pauses the audio without moving it, lands on the new note's
+- [x] 9.3 Confirm marking mid-playback pauses the audio without moving it, lands on the new note's
       text field, and that backing out of that field leaves a bare mark rather than nothing
-- [ ] 9.4 Dictate a note with the keyboard's mic key and confirm the app itself never asks for the
+- [x] 9.4 Dictate a note with the keyboard's mic key and confirm the app itself never asks for the
       microphone
-- [ ] 9.5 Mark a few seconds into a chapter and confirm the entry names the *previous* chapter and
+- [x] 9.5 Mark a few seconds into a chapter and confirm the entry names the *previous* chapter and
       seeks into its tail — the D5 consequence, and the one case where "the label looks wrong" is
       correct behavior
-- [ ] 9.6 Mark within the first seconds of the book and confirm it anchors at the start rather than
+- [x] 9.6 Mark within the first seconds of the book and confirm it anchors at the start rather than
       failing or seeking oddly
-- [ ] 9.7 Edit an entry, clear an entry's text, delete an entry, and confirm each survives killing and
+- [x] 9.7 Edit an entry, clear an entry's text, delete an entry, and confirm each survives killing and
       reopening the app
-- [ ] 9.8 Remove a book that has notes, confirm the sheet states the count, then re-add the book and
+- [x] 9.8 Remove a book that has notes, confirm the sheet states the count, then re-add the book and
       confirm it comes back with no notes — the cascade the owner accepted, seen once in practice
-- [ ] 9.9 Confirm back from the Notes screen lands on the Player, not the Library, and that a visit
+- [x] 9.9 Confirm back from the Notes screen lands on the Player, not the Library, and that a visit
       that selects nothing leaves playback where the mark paused it
 - [x] 9.10 Install over an existing build carrying real data and confirm the v6 → v7 migration runs
       with the library, chapters, progress, and linked ebooks all intact.
