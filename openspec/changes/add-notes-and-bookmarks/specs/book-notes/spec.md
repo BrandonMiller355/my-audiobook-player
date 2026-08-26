@@ -142,9 +142,12 @@ its chapters renumbered.
 
 ### Requirement: Marking and writing up are one gesture, and writing is optional
 
-Marking SHALL land the user in the new entry's text field with no further navigation. Declining to
-write anything SHALL keep the entry as a bare mark rather than discarding it — the mark is a
-bookmark, and it was already worth taking.
+Marking SHALL land the user in the new entry's text field with no further navigation. Keeping an
+empty field SHALL store a bare mark, which is a bookmark; abandoning the field SHALL discard the
+entry entirely, because it was never confirmed.
+
+Abandoning the text field of an entry that already existed SHALL leave that entry alone rather than
+discard it. The two cases are different intents and SHALL behave differently.
 
 The user SHALL be shown which chapter the entry landed in while writing it, so that an entry anchored
 into the previous chapter reads as deliberate rather than as an error.
@@ -155,11 +158,23 @@ into the previous chapter reads as deliberate rather than as an error.
 - **THEN** the entry carries that text
 - **AND** it appears in this book's list at the marked position
 
-#### Scenario: Declining to write anything
+#### Scenario: Canceling a mark
 
 - **WHEN** the user marks and then dismisses the text field without keeping anything
-- **THEN** the entry remains as a bare mark at the same anchor
-- **AND** it is not discarded
+- **THEN** no entry is added to the book
+- **AND** the list is as it was before the mark
+
+#### Scenario: Bookmarking without words
+
+- **WHEN** the user marks and keeps the entry with the text field left empty
+- **THEN** a bare mark is stored at that anchor
+- **AND** it is listed as an entry awaiting text
+
+#### Scenario: Canceling an edit to an existing entry
+
+- **WHEN** the user opens an entry that already existed, changes the text, and dismisses without
+  keeping it
+- **THEN** that entry remains, with the text it had before
 
 #### Scenario: The entry states where it landed
 

@@ -114,7 +114,11 @@ In scope, and built:
   key held open against a playing audiobook transcribes the book.
 - Anchoring that mark a fixed fifteen seconds behind the tap, so replaying it begins before the
   passage that prompted it rather than after it. This is also what makes stopping to write cheap.
-- Writing nothing is allowed: the entry stays as a bare mark, which is a bookmark.
+- Keeping an entry with no words written stays a bare mark, which is a bookmark. Backing out of the
+  entry instead discards it, since it was never confirmed.
+- Marking from the reader as well as the player, from the reader's overflow menu, with identical
+  behavior. An entry is anchored against the audio wherever it was taken from, so the two are the
+  same kind of record.
 - Giving a mark text, at any later time, and editing or deleting it.
 - Recording, on the note itself, which chapter it was taken in, so that the list stays truthful even
   after a book is re-added and its chapters renumber.

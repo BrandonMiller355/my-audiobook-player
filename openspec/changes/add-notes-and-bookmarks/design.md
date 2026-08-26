@@ -185,9 +185,18 @@ There is no separate acknowledgement — no snackbar, no toast — because there
 to say. The screen changed and the audio stopped; a mis-hit on the footer is impossible to miss and
 costs one back press, which leaves a bookmark rather than nothing.
 
-Declining to write text keeps the entry as a bare mark. That falls out of D1 rather than being a
-separate rule: the mark was already worth taking, and an empty note *is* a bookmark. Discarding it on
-cancel would make the control mean two different things depending on what the user did next.
+**Canceling discards the entry**, because the row was written before the editor opened and the user
+never confirmed it. An earlier version kept it as a bare mark, reasoning from D1 that an empty note
+*is* a bookmark; the owner reported that as a bug, and it was one — pressing Cancel and being given
+the thing you canceled is indefensible whatever the data model says.
+
+A bare bookmark is still reachable, and by the more honest gesture: keeping an empty field stores a
+note with no text. So *Keep* means "record this", with or without words, and *Cancel* means "forget
+it". Dismissing by back or swipe takes the Cancel path.
+
+This applies only to an entry the visit created. Canceling the editor on an entry that already
+existed declines the edit and leaves the entry alone — two different intents, which is why the screen
+tracks which one is open.
 
 ### D9: `notes` cascade-deletes with its book, and the confirmation says how many
 
@@ -253,6 +262,25 @@ above it on the previous screen.
 Consequence: a folder book whose durations have not resolved shows an approximate figure, the same
 transient undercount `absolutePosition` documents and the scrubber already lives with. The chapter
 title carries the meaning; the timestamp is a locator.
+
+### D13: The Reader can mark too, from its overflow menu
+
+"Bookmark this spot" in the reader's menu does exactly what the Player's Mark segment does: pauses,
+records at the same lead-in anchor, and opens the new entry for writing. Owner-requested after the
+Player flow was built.
+
+It is the same call into `noteAnchorFor` rather than a reader-specific path, so an entry taken while
+reading is indistinguishable from one taken while listening — same table, same anchor coordinates,
+same list. **The anchor is the audio position, not the reading position**, which is what makes that
+true. For a book that supports read-along the two track each other anyway (`readalong-sync`), so the
+audio anchor *is* where the user is reading; for a book that does not, the anchor is still the only
+coordinate a note can seek to.
+
+An earlier attempt gave the reader its own gentler behavior — no pause, no navigation, a snackbar and
+a bare mark — on the theory that reading should not be interrupted. That was wrong and the owner said
+so: one control that means two different things depending on which screen it is pressed from is worse
+than one interruption. The menu item is in the first group, with the actions that concern how this
+book is being read, rather than below the divider with the two that change which ebook is linked.
 
 ## Risks / Trade-offs
 

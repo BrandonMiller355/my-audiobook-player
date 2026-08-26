@@ -15,6 +15,7 @@ import androidx.media3.session.SessionToken
 import com.brandonmiller.audiobookplayer.R
 import com.brandonmiller.audiobookplayer.data.AudiobookDatabase
 import com.brandonmiller.audiobookplayer.data.LibraryDao
+import com.brandonmiller.audiobookplayer.data.NoteEntity
 import com.brandonmiller.audiobookplayer.data.ReadingPreferences
 import com.brandonmiller.audiobookplayer.data.ReadingSettings
 import com.brandonmiller.audiobookplayer.ebook.Ebook
@@ -26,12 +27,10 @@ import com.brandonmiller.audiobookplayer.ebook.TextPosition
 import com.brandonmiller.audiobookplayer.playback.PlaybackService
 import com.brandonmiller.audiobookplayer.playback.ReadAlongMap
 import com.brandonmiller.audiobookplayer.playback.audioChaptersFrom
-import com.brandonmiller.audiobookplayer.data.NoteEntity
 import com.brandonmiller.audiobookplayer.playback.chapterTimeline
 import com.brandonmiller.audiobookplayer.playback.currentLocation
-import com.brandonmiller.audiobookplayer.playback.noteAnchorFor
-import com.brandonmiller.audiobookplayer.playback.currentLocation
 import com.brandonmiller.audiobookplayer.playback.matchChapters
+import com.brandonmiller.audiobookplayer.playback.noteAnchorFor
 import com.brandonmiller.audiobookplayer.ui.library.UriPermissionHolder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

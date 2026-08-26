@@ -31,9 +31,11 @@ table, a single list, and a single set of requirements.
   getting the phone out, and tapping takes about that long, so anchoring at "now" puts every note
   after the thing that caused it — and it is what makes stopping to write cheap, because resuming
   replays from before the interruption.
-- **A note is a mark with text.** Marking goes straight to the text field, and backing out of it
-  leaves a bare mark, which is a bookmark. Any mark can be written up later from the Notes screen.
-  There is no separate "add note" path and no separate kind of record.
+- **A note is a mark with text.** Marking goes straight to the text field. Keeping it empty stores a
+  bare mark, which is a bookmark; backing out discards the entry, since it was never confirmed. Any
+  mark can be written up later from the Notes screen. There is no separate "add note" path and no
+  separate kind of record.
+- **The Reader can mark too**, from its overflow menu, behaving identically to the Player's control.
 - **A new Notes screen, per book**, reached by marking. Each entry shows the chapter it was taken in,
   its position in the book, and its text.
 - **Tapping an entry seeks the player there** and returns to the Player.
@@ -60,18 +62,20 @@ Deliberately excluded, and named so a later reader knows they were considered:
 - **A configurable lead-in.** PRD §20 requires no settings screen, and this change does not add one.
   The constant is tunable in source, not in the app.
 - **Notes across books, search, tags, sort orders, or export.** Book club is one book at a time; the
-  list is chronological within one book and that is the whole of it.
-- **Notes anywhere but the Player and the Notes screen.** The Library row does not show a note count,
-  and the Reader does not take notes on the ebook text.
+  list is in book order within one book and that is the whole of it.
+- **Notes on the ebook's text.** The Reader can mark, but what it marks is the audio position, the
+  same as everywhere else — not a text range, a highlight, or a passage.
+- **A note count on the Library row.** The count is shown on the Player and in the removal
+  confirmation, and nowhere else.
 - **Editing a note's anchor.** The position a note points at is the position it was taken at, moved
   back by the fixed lead-in. Only its text is editable.
 
 ### Dependencies
 
 **No new third-party dependency is added.** Everything this needs is already present: Room for the
-table, `BookTimeline` for the anchor arithmetic, Compose for the screen, and `ui/Icons.kt` for the
-two glyphs it draws by hand — the codebase draws its own icons rather than pull
-`material-icons-extended`, and that holds here.
+table, `BookTimeline` for the anchor arithmetic, and Compose for the screen. No new icon is drawn
+either — the Player's mark segment is text like its neighbors, the Reader's is a menu item, and the
+notes list reuses the existing `OverflowIcon`.
 
 ### Permissions and manifest
 
@@ -113,10 +117,11 @@ methods join the existing `data/` files rather than start new ones.
 
 **Touched code** — `data/Entities.kt` and `data/Migrations.kt` for the table; `data/LibraryDao.kt`
 for creating, observing, updating, and deleting notes, and for the count the removal confirmation
-needs; `ui/AudiobooksApp.kt` for the route; `ui/player/PlayerScreen.kt` for the third footer segment
-and the cover control; `ui/player/PlayerViewModel.kt` for computing the anchor and writing the note;
-`ui/library/LibraryScreen.kt` for the note count in the confirmation; `ui/Icons.kt` for the two new
-glyphs; `res/values/strings.xml` throughout.
+needs; `ui/AudiobooksApp.kt` for the two routes; `ui/player/PlayerScreen.kt` for the third footer
+segment; `ui/player/PlayerViewModel.kt` for computing the anchor and writing the note;
+`ui/reader/ReaderChrome.kt`, `ReaderScreen.kt`, and `ReaderViewModel.kt` for marking from the reader;
+`playback/PlayerTimeline.kt` for a timeline built from stored rows; `ui/library/LibraryScreen.kt` for
+the note count in the confirmation; `res/values/strings.xml` throughout.
 
 **Untouched** — everything under `playback/` except as a reader. `BookTimeline` gains no method:
 `seekTarget`, `locate`, and `absolutePosition` already do the whole anchor computation, which is the
