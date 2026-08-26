@@ -98,6 +98,7 @@ fun ReaderChrome(
     onContents: () -> Unit,
     onSettings: () -> Unit,
     onBrightness: () -> Unit,
+    onBookmark: () -> Unit,
     onChange: () -> Unit,
     onUnlink: () -> Unit,
 ) {
@@ -167,6 +168,7 @@ fun ReaderChrome(
                             onContents = onContents,
                             onSettings = onSettings,
                             onBrightness = onBrightness,
+                            onBookmark = onBookmark,
                             onChange = onChange,
                             onUnlink = onUnlink,
                         )
@@ -198,6 +200,7 @@ private fun ReaderMenu(
     onContents: () -> Unit,
     onSettings: () -> Unit,
     onBrightness: () -> Unit,
+    onBookmark: () -> Unit,
     onChange: () -> Unit,
     onUnlink: () -> Unit,
 ) {
@@ -213,6 +216,7 @@ private fun ReaderMenu(
         if (canSearch) {
             ReaderMenuItem(stringResource(R.string.reader_search)) { onDismiss(); onSearch() }
         }
+        ReaderMenuItem(stringResource(R.string.reader_bookmark)) { onDismiss(); onBookmark() }
         ReaderMenuItem(stringResource(R.string.reader_settings)) { onDismiss(); onSettings() }
         ReaderMenuItem(stringResource(R.string.reader_brightness)) { onDismiss(); onBrightness() }
 

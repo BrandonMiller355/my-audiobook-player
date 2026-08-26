@@ -19,6 +19,7 @@ import androidx.media3.session.SessionToken
 import com.brandonmiller.audiobookplayer.data.AudiobookDatabase
 import com.brandonmiller.audiobookplayer.data.ChapterEntity
 import com.brandonmiller.audiobookplayer.data.LibraryDao
+import com.brandonmiller.audiobookplayer.data.NoteEntity
 import com.brandonmiller.audiobookplayer.data.SOURCE_TYPE_M4B
 import com.brandonmiller.audiobookplayer.data.SpeedPreferences
 import com.brandonmiller.audiobookplayer.R
@@ -30,6 +31,7 @@ import com.brandonmiller.audiobookplayer.playback.PlaybackService
 import com.brandonmiller.audiobookplayer.playback.chapterTimeline
 import com.brandonmiller.audiobookplayer.playback.currentLocation
 import com.brandonmiller.audiobookplayer.playback.loadBook
+import com.brandonmiller.audiobookplayer.playback.noteAnchorFor
 import com.brandonmiller.audiobookplayer.playback.resolveChapterDurations
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -68,8 +70,21 @@ data class PlayerUiState(
     val hasEbook: Boolean = false,
     /** Set once after a successful link, so picking an ebook goes straight on into reading it. */
     val openReaderRequested: Boolean = false,
+    /** How many marks and notes this book carries — the mark segment's sub-label (design D6). */
+    val noteCount: Int = 0,
+    /** Set when a mark has just been taken, and cleared once its confirmation has been shown. */
+    val markTaken: MarkTaken? = null,
     val errorMessage: String? = null,
 )
+
+/**
+ * A mark the user has just taken, carried only long enough to send the Player to it.
+ *
+ * [noteId] is what makes the notes screen open this note for writing rather than merely listing it
+ * (design D8), which is what keeps marking and writing up one gesture. [chapterTitle] is the
+ * anchored chapter — what the note itself says, not where the user was standing when they tapped.
+ */
+data class MarkTaken(val noteId: Long, val chapterTitle: String)
 
 /**
  * One row of the chapter sheet. [startMs] is absolute across the book, so selecting a chapter is
@@ -137,6 +152,20 @@ class PlayerViewModel(
     init {
         connect()
         observeEbookLink()
+        observeNoteCount()
+    }
+
+    /**
+     * Observed rather than counted once, so the mark segment's sub-label is right after a note is
+     * taken here and after one is deleted on the notes screen — which sits on the back stack above
+     * this Player rather than replacing it.
+     */
+    private fun observeNoteCount() {
+        viewModelScope.launch {
+            dao.observeNotes(bookId).collect { notes ->
+                _state.update { it.copy(noteCount = notes.size) }
+            }
+        }
     }
 
     /**
@@ -358,6 +387,51 @@ class PlayerViewModel(
         val target = player.chapterTimeline(chapterDurationsMs).targetForAbsolute(absoluteMs)
         player.seekTo(target.mediaItemIndex, target.positionMs)
         readPlayerState()
+    }
+
+    /**
+     * The footer's mark control: pauses, records the current spot, and opens the new note for
+     * writing (design D6).
+     *
+     * **Pausing is the point, not a side effect.** Writing a note means dictating it or typing it,
+     * and both compete with the narration — a dictation key held open against a playing audiobook
+     * hears the book, not the user. Marking is therefore a deliberate stop rather than something
+     * done without breaking stride, and the lead-in (design D5) is what makes stopping cheap: the
+     * anchor is already fifteen seconds back, so the passage replays from before the interruption.
+     *
+     * The pause happens first and synchronously, so the audio stops the instant the control is hit
+     * rather than whenever the insert returns. Position is unaffected either way — pausing does not
+     * move the player, so the anchor computed just above stays correct.
+     *
+     * Playback is left paused afterwards. Coming back from the notes screen lands on the Player with
+     * its play control under the thumb, which is a smaller surprise than audio restarting itself
+     * while the user is still reading what they wrote.
+     */
+    fun mark() {
+        val player = controller ?: return
+        val timeline = player.chapterTimeline(chapterDurationsMs)
+        val anchor = noteAnchorFor(
+            timeline = timeline,
+            from = player.currentLocation(timeline),
+            chapterTitles = chapters.map { it.title },
+        )
+        player.pause()
+
+        viewModelScope.launch {
+            val note = NoteEntity(
+                audiobookId = bookId,
+                mediaItemIndex = anchor.target.mediaItemIndex,
+                positionMs = anchor.target.positionMs,
+                chapterTitle = anchor.chapterTitle,
+                createdAt = System.currentTimeMillis(),
+            )
+            val noteId = withContext(Dispatchers.IO) { dao.insertNote(note) }
+            _state.update { it.copy(markTaken = MarkTaken(noteId, anchor.chapterTitle)) }
+        }
+    }
+
+    fun consumeMarkTaken() {
+        _state.update { it.copy(markTaken = null) }
     }
 
     fun setSpeed(speed: Float) {

@@ -32,21 +32,37 @@ class ReadAlongMap(private val anchors: List<ReadAlongAnchor>) {
     private val medianCharsPerMs: Double = segmentRates().median()
 
     /** The book position, in characters, that corresponds to [ms] of audio. Clamps past either end. */
-    fun charsForMs(ms: Long): Int {
-        if (ms <= anchors.first().absoluteMs) return anchors.first().absoluteChars
-        if (ms >= anchors.last().absoluteMs) return anchors.last().absoluteChars
+    fun charsForMs(ms: Long): Int = charsForMsExact(ms).roundToInt()
+
+    /**
+     * [charsForMs] without the rounding to a whole character.
+     *
+     * The reader's glide samples this once a frame, and a whole character is far too coarse to
+     * sample at that rate: narration runs at roughly fifteen characters a second, so a rounded
+     * target only changes about fifteen times a second and the page holds still for three or four
+     * frames between steps. That reads as a stutter rather than as motion, no matter how smoothly
+     * the scroll itself is applied.
+     *
+     * Every caller that wants a position to *store*, to look up, or to seek to still wants
+     * [charsForMs] — a character is the unit those are expressed in. Only the glide, which turns
+     * this into a pixel offset, needs what falls between two of them.
+     */
+    fun charsForMsExact(ms: Long): Double {
+        if (ms <= anchors.first().absoluteMs) return anchors.first().absoluteChars.toDouble()
+        if (ms >= anchors.last().absoluteMs) return anchors.last().absoluteChars.toDouble()
 
         val from = anchors[segmentStartForMs(ms)]
         val to = anchors[segmentStartForMs(ms) + 1]
-        if (to.absoluteMs == from.absoluteMs) return to.absoluteChars
+        if (to.absoluteMs == from.absoluteMs) return to.absoluteChars.toDouble()
 
         val rate = segmentRate(from, to)
         return if (isGuarded(rate)) {
-            val advanced = (medianCharsPerMs * (ms - from.absoluteMs)).roundToInt()
-            (from.absoluteChars + advanced).coerceIn(from.absoluteChars, to.absoluteChars)
+            val advanced = medianCharsPerMs * (ms - from.absoluteMs)
+            (from.absoluteChars + advanced)
+                .coerceIn(from.absoluteChars.toDouble(), to.absoluteChars.toDouble())
         } else {
             val t = (ms - from.absoluteMs).toDouble() / (to.absoluteMs - from.absoluteMs)
-            from.absoluteChars + (t * (to.absoluteChars - from.absoluteChars)).roundToInt()
+            from.absoluteChars + t * (to.absoluteChars - from.absoluteChars)
         }
     }
 

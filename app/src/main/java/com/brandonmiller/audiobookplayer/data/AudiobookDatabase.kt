@@ -6,8 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [AudiobookEntity::class, ChapterEntity::class],
-    version = 6,
+    entities = [AudiobookEntity::class, ChapterEntity::class, NoteEntity::class],
+    version = 7,
     exportSchema = true,
 )
 abstract class AudiobookDatabase : RoomDatabase() {
@@ -37,6 +37,7 @@ abstract class AudiobookDatabase : RoomDatabase() {
                     MIGRATION_3_4,
                     MIGRATION_4_5,
                     MIGRATION_5_6,
+                    MIGRATION_6_7,
                 )
                     .build().also { instance = it }
             }

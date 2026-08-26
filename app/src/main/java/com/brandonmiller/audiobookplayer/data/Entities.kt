@@ -100,6 +100,58 @@ data class ChapterEntity(
     val endPositionMs: Long? = null,
 )
 
+/**
+ * One mark or note against a book (`add-notes-and-bookmarks` design D1).
+ *
+ * A bookmark and a note are the same record at different stages: [text] is null for a bare mark and
+ * non-null once it has been written up. Annotating is therefore an update rather than a conversion
+ * between two kinds of row, which is what makes mark-now-annotate-later — half the point of the
+ * feature — cost nothing.
+ *
+ * Cascades from `audiobooks` exactly as [ChapterEntity] does. Notes are the only user-authored
+ * content in this app, so that was a real decision rather than a default: the owner made it, and the
+ * removal confirmation states the count before it takes them.
+ */
+@Entity(
+    tableName = "notes",
+    foreignKeys = [
+        ForeignKey(
+            entity = AudiobookEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["audiobookId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("audiobookId")],
+)
+data class NoteEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val audiobookId: Long,
+    /**
+     * Where this note points, in raw Media3 player coordinates — the same pair, for the same
+     * reasons, that [AudiobookEntity] stores its saved position in (design D2). It is the anchor,
+     * already moved back by the lead-in, not the position playing when the user tapped.
+     */
+    val mediaItemIndex: Int,
+    val positionMs: Long,
+    /**
+     * The title of the chapter [mediaItemIndex]/[positionMs] falls in, snapshotted when the note was
+     * created (design D4).
+     *
+     * Denormalized on purpose. Deriving it from `chapters` at display time keeps one source of
+     * truth, but a chapter index is only stable while the book's scan is: re-adding a folder book
+     * after a file is renamed shifts every index, and every old note would then relabel itself
+     * silently and plausibly. One string buys a list that survives a rescan.
+     *
+     * Of the *anchored* position, which for a mark taken just after a chapter boundary is the
+     * previous chapter — the label has to agree with where the note actually seeks.
+     */
+    val chapterTitle: String,
+    /** Null is a bare mark awaiting text; clearing a note's text returns it to that state. */
+    val text: String? = null,
+    val createdAt: Long,
+)
+
 /** A library row: the book plus the derived figures the list and the resume card show. */
 data class LibraryBook(
     val id: Long,
@@ -130,6 +182,12 @@ data class LibraryBook(
      * query that runs on every library emission buys nothing.
      */
     val hasEbook: Boolean = false,
+    /**
+     * How many marks and notes this book carries. Not shown on the row — it exists so the removal
+     * confirmation can state what it is about to destroy, notes being the only user-authored content
+     * in the app (`add-notes-and-bookmarks` design D9).
+     */
+    val noteCount: Int = 0,
 ) {
     /**
      * How far through the book the saved position is, or null when either figure is missing. Both

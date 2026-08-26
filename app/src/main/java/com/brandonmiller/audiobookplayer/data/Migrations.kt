@@ -113,3 +113,36 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
         db.execSQL("ALTER TABLE audiobooks_new RENAME TO audiobooks")
     }
 }
+
+/**
+ * Adds the `notes` table (`add-notes-and-bookmarks` design D10). Additive and non-destructive in the
+ * shape of [MIGRATION_1_2] through [MIGRATION_3_4] rather than the table rebuild [MIGRATION_5_6]
+ * needed: nothing existing is altered, so every current row is untouched and a library with no notes
+ * behaves exactly as it did at version 6 — which is the state the empty notes screen already draws.
+ *
+ * The DDL is written out by hand and has to match what Room generates from `NoteEntity` exactly:
+ * column order, affinities, nullability, the foreign key clause, and the index name. A mismatch
+ * still migrates and still stores rows, then fails Room's schema validation the next time the app
+ * opens the database. `Migration6To7Test` pins both statements to the committed version 7 export
+ * rather than trusting this comment.
+ */
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `notes` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `audiobookId` INTEGER NOT NULL,
+                `mediaItemIndex` INTEGER NOT NULL,
+                `positionMs` INTEGER NOT NULL,
+                `chapterTitle` TEXT NOT NULL,
+                `text` TEXT,
+                `createdAt` INTEGER NOT NULL,
+                FOREIGN KEY(`audiobookId`) REFERENCES `audiobooks`(`id`)
+                    ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent(),
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_notes_audiobookId` ON `notes` (`audiobookId`)")
+    }
+}

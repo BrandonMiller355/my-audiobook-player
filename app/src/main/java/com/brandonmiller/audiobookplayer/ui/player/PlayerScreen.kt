@@ -58,6 +58,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -100,7 +101,7 @@ internal val SPEED_STOPS = listOf(
 private const val SEEK_SHORT_MS = 10_000L
 private const val SEEK_LONG_MS = 60_000L
 
-/** Which half of the footer opened the sheet, and therefore what it should scroll to. */
+/** Which of the footer's two sheet segments was pressed, and therefore what it should scroll to. */
 internal enum class SheetSection { Chapters, Speed }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -109,6 +110,7 @@ fun PlayerScreen(
     bookId: String,
     onBack: () -> Unit,
     onOpenReader: () -> Unit,
+    onOpenNotes: (Long) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PlayerViewModel = viewModel(
         factory = PlayerViewModel.factory(LocalContext.current, bookId),
@@ -151,6 +153,15 @@ fun PlayerScreen(
             snackbarHostState.showSnackbar(it)
             viewModel.consumeError()
         }
+    }
+
+    // Marking goes straight to writing the note up (design D8). The navigation is the confirmation:
+    // there is no separate acknowledgement to miss, and a mis-hit is obvious because the screen
+    // changed and the audio stopped. Backing out leaves the mark, which is a bookmark.
+    LaunchedEffect(state.markTaken) {
+        val taken = state.markTaken ?: return@LaunchedEffect
+        viewModel.consumeMarkTaken()
+        onOpenNotes(taken.noteId)
     }
 
     LightStatusBarIcons()
@@ -249,9 +260,11 @@ fun PlayerScreen(
             PlayerFooter(
                 chapterNumber = state.chapterNumber,
                 chapterCount = state.chapterCount,
+                noteCount = state.noteCount,
                 speed = state.speed,
                 enabled = state.connected,
                 onOpen = { openSection = it },
+                onMark = viewModel::mark,
             )
 
             Spacer(Modifier.height(20.dp))
@@ -693,29 +706,38 @@ internal fun PlayPauseButton(
     }
 }
 
-/** Two equal halves split by a hairline, each opening the same sheet at its own section. */
+/**
+ * Three equal segments split by hairlines: Chapters, Mark, Speed.
+ *
+ * The middle one pauses the book and opens its new note for writing, rather than opening a sheet
+ * over the Player the way its neighbors do (design D6). It sits here because this is the largest
+ * low-on-screen surface the Player has, and marking a spot should not require aiming; its sub-label
+ * carries the note count, so the segment reads as being *about* something rather than as a bare verb.
+ */
 @Composable
 private fun PlayerFooter(
     chapterNumber: Int,
     chapterCount: Int,
+    noteCount: Int,
     speed: Float,
     enabled: Boolean,
     onOpen: (SheetSection) -> Unit,
+    onMark: () -> Unit,
 ) {
     val colors = audiobookColors
 
     Column {
         Box(Modifier.fillMaxWidth().height(1.dp).background(colors.track))
 
-        // IntrinsicSize.Min so the vertical hairline can match the halves' height, which is set by
-        // their content rather than by the row.
+        // IntrinsicSize.Min so the vertical hairlines can match the segments' height, which is set
+        // by their content rather than by the row.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(IntrinsicSize.Min)
                 .alpha(if (enabled) 1f else DISABLED_ALPHA),
         ) {
-            FooterHalf(
+            FooterSegment(
                 label = stringResource(R.string.player_chapters),
                 subLabel = stringResource(R.string.player_chapter_position, chapterNumber, chapterCount),
                 labelStyle = AudiobookType.labelAction,
@@ -723,8 +745,17 @@ private fun PlayerFooter(
                 modifier = Modifier.weight(1f),
                 onClick = { onOpen(SheetSection.Chapters) },
             )
-            Box(Modifier.width(1.dp).fillMaxHeight().background(colors.track))
-            FooterHalf(
+            FooterDivider()
+            FooterSegment(
+                label = stringResource(R.string.player_mark),
+                subLabel = pluralStringResource(R.plurals.player_mark_caption, noteCount, noteCount),
+                labelStyle = AudiobookType.labelAction,
+                enabled = enabled,
+                modifier = Modifier.weight(1f),
+                onClick = onMark,
+            )
+            FooterDivider()
+            FooterSegment(
                 label = stringResource(R.string.player_speed_value, formatSpeed(speed)),
                 subLabel = stringResource(R.string.player_speed_caption),
                 labelStyle = AudiobookType.monoSpeed,
@@ -737,7 +768,12 @@ private fun PlayerFooter(
 }
 
 @Composable
-private fun FooterHalf(
+private fun FooterDivider() {
+    Box(Modifier.width(1.dp).fillMaxHeight().background(audiobookColors.track))
+}
+
+@Composable
+private fun FooterSegment(
     label: String,
     subLabel: String,
     labelStyle: TextStyle,
