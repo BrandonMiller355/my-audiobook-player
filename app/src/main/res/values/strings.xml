@@ -113,6 +113,7 @@
     <!-- Reader -->
     <string name="reader_loading">Opening…</string>
     <string name="reader_back">Back to the player</string>
+    <string name="reader_selection_copied">Copied</string>
     <string name="reader_contents">Contents</string>
     <string name="reader_contents_close">Close contents</string>
     <string name="reader_contents_empty">This ebook has no table of contents.</string>

@@ -90,11 +90,18 @@ In scope, and built:
   against the narration; what is stored is one point per chapter, and both chapter boundaries stay
   exact. It carries only what the owner enters with those buttons, which is what keeps it on this
   side of the forced-alignment boundary below.
+- **Selecting a passage by hand and copying it**, with a long press, while the book is paused. This
+  is the reader's own finger on their own choice of words — nothing about it is derived from the
+  audio, which is what keeps it clear of the first non-goal below. It is offered only while paused
+  because the page moves under the finger while the narration runs. §20.4 describes it;
+  `openspec/specs/ebook-reader/` specifies it.
 
 Out of scope, and not to be built without a further explicit request:
 
 - **Highlighting the sentence or word being read.** Knowing which words are being spoken is forced
-  alignment; knowing roughly where in a chapter the narrator is, is not.
+  alignment; knowing roughly where in a chapter the narrator is, is not. This rules out the *app*
+  marking text of its own accord, and says nothing about the reader selecting text by hand, which is
+  in scope above — the two are easily confused because both end up as tinted words on the page.
 - **Deriving audio chapter boundaries from the ebook's structure.**
 - **On-device or bundled forced alignment** (for example a speech-recognition model), and any
   workflow requiring the user to preprocess a book on a PC first — the latter would also conflict
@@ -784,6 +791,9 @@ Contains:
 - For a book that follows the narration, a control that moves the text earlier or later against it,
   correcting the chapter being listened to. Offered only for such a book, since there is nothing to
   line up otherwise. See §3.1 and `openspec/specs/readalong-sync/`
+- Text that can be selected by a long press and copied, while the book is paused. Scrolling is
+  unaffected in either state: a touch that starts moving scrolls, and only a finger held still
+  selects. See §3.1
 
 The screen keeps the display awake while it is shown.
 

@@ -35,13 +35,48 @@ data class NoteAnchor(val target: PlayerTarget, val chapterTitle: String)
  * [chapterTitles] is indexed by chapter, as stored. A title that is not there yields an empty
  * string rather than throwing: a note is worth keeping even from a book whose chapter rows have not
  * loaded, and the anchor — the part that cannot be recovered later — is already correct by then.
+ *
+ * [leadInMs] defaults to the constant every tapped mark uses, so the call sites that take it read
+ * exactly as they always have. It is a parameter at all for the one caller that must not have it: a
+ * note made from a passage the owner selected in the reader (`add-reader-text-selection` design D4),
+ * which has no lag to reach back behind.
  */
 fun noteAnchorFor(
     timeline: BookTimeline,
     from: Location,
     chapterTitles: List<String>,
+    leadInMs: Long = NOTE_LEAD_IN_MS,
 ): NoteAnchor {
-    val target = timeline.seekTarget(from, -NOTE_LEAD_IN_MS)
+    val target = timeline.seekTarget(from, -leadInMs)
+    return NoteAnchor(target, titleAt(timeline, target, chapterTitles))
+}
+
+/**
+ * The same anchor, for a passage whose place in the book is already known absolutely rather than as
+ * an offset from where playback is stopped (`add-reader-text-selection` design D4).
+ *
+ * This is the read-along path: the reader converts the selected block to a character offset and the
+ * read-along map converts that to [absoluteMs], so the note lands on the passage itself rather than
+ * wherever the audio happens to be parked. No lead-in applies, and none is offered — a selected
+ * passage names itself exactly.
+ *
+ * The title is resolved from the anchored target for the reason [noteAnchorFor] does it: an entry
+ * that names a chapter it does not seek into is the failure both are guarding against.
+ */
+fun noteAnchorAt(
+    timeline: BookTimeline,
+    absoluteMs: Long,
+    chapterTitles: List<String>,
+): NoteAnchor {
+    val target = timeline.targetForAbsolute(absoluteMs)
+    return NoteAnchor(target, titleAt(timeline, target, chapterTitles))
+}
+
+private fun titleAt(
+    timeline: BookTimeline,
+    target: PlayerTarget,
+    chapterTitles: List<String>,
+): String {
     val anchored = timeline.locate(target.mediaItemIndex, target.positionMs)
-    return NoteAnchor(target, chapterTitles.getOrNull(anchored.chapterIndex).orEmpty())
+    return chapterTitles.getOrNull(anchored.chapterIndex).orEmpty()
 }
