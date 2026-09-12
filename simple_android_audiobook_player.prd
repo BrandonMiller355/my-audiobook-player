@@ -73,16 +73,28 @@ An ebook companion was explicitly requested later, which is the exception this s
 It is built, and §20.4 describes it. Its boundaries belong here, because what it deliberately
 leaves out is larger than what it does.
 
+Synchronizing the text with the narration was listed here as a non-goal in every form. Two parts of
+it were explicitly requested later and are struck from the list rather than left standing in
+contradiction to the features that exist — the same exception §3.2 records for notes and bookmarks.
+What replaced them is chapter-anchored interpolation, not alignment: the correspondence is exact at
+each chapter mark and interpolated between, and the remaining non-goals below are what keeps it that
+way.
+
 In scope, and built:
 
 - Linking one EPUB to one audiobook, and reading it inside the app.
+- **Scrolling the page as the narrator advances**, and moving the audio when the page is moved
+  deliberately. §7.3 and §20.4 describe it; `openspec/specs/readalong-sync/` specifies it.
+- **An owner-entered correction** for a chapter the interpolation gets wrong — the "sync here"
+  anchor this list used to rule out. Two buttons in the reader move the text earlier or later
+  against the narration; what is stored is one point per chapter, and both chapter boundaries stay
+  exact. It carries only what the owner enters with those buttons, which is what keeps it on this
+  side of the forced-alignment boundary below.
 
 Out of scope, and not to be built without a further explicit request:
 
-- **Synchronizing the text with the narration** in any form — highlighting the sentence being
-  read, scrolling the page as the narrator advances, user-tapped "sync here" anchors, or jumping
-  the ebook to match the audio position. The reading position and the playback position are two
-  independent places in the same book, on purpose.
+- **Highlighting the sentence or word being read.** Knowing which words are being spoken is forced
+  alignment; knowing roughly where in a chapter the narrator is, is not.
 - **Deriving audio chapter boundaries from the ebook's structure.**
 - **On-device or bundled forced alignment** (for example a speech-recognition model), and any
   workflow requiring the user to preprocess a book on a PC first — the latter would also conflict
@@ -90,9 +102,10 @@ Out of scope, and not to be built without a further explicit request:
 - **MOBI and AZW3.** Modern Kindle formats ship DRM-protected, and DRM support remains a non-goal
   above. A DRM-protected EPUB is refused with a readable message rather than worked around.
 
-All of these are downstream of forced alignment, which is a different project from this one. The
-analysis behind the boundary — four possible approaches, their costs, and why the cheap ones fail
-on this library specifically — is in `handoffs/2026-08-10-ebook-audio-readalong.md`.
+The first three are downstream of forced alignment, which is a different project from this one; the
+fourth is downstream of DRM. The analysis behind the boundary — four possible approaches, their
+costs, and why the cheap ones fail on this library specifically — is in
+`handoffs/2026-08-10-ebook-audio-readalong.md`.
 
 ---
 
@@ -768,6 +781,9 @@ Contains:
 - A pure black background with white text, in both light and dark system themes
 - Controls that stay hidden while reading and are revealed by a tap: return to the Player, the
   ebook's own table of contents, reading settings, play/pause, and change or unlink the ebook
+- For a book that follows the narration, a control that moves the text earlier or later against it,
+  correcting the chapter being listened to. Offered only for such a book, since there is nothing to
+  line up otherwise. See §3.1 and `openspec/specs/readalong-sync/`
 
 The screen keeps the display awake while it is shown.
 

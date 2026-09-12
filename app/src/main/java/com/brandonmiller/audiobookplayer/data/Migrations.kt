@@ -146,3 +146,45 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_notes_audiobookId` ON `notes` (`audiobookId`)")
     }
 }
+
+/**
+ * Adds the `read_along_corrections` table (`add-readalong-nudge` design D9).
+ *
+ * Additive, in the shape of [MIGRATION_6_7] rather than the table rebuild [MIGRATION_5_6] needed:
+ * nothing existing is altered, so every current row is untouched and a library with no corrections
+ * behaves exactly as it did at version 7 — which is the uncorrected correspondence the reader
+ * already draws.
+ *
+ * The composite primary key is what gives design D7's replace-don't-accumulate its teeth: a second
+ * correction for the same chapter collides on `(audiobookId, chapterIndex)` and Room's `REPLACE`
+ * conflict strategy overwrites it, so accumulating a staircase of corrections is not merely
+ * discouraged in the UI but impossible in the schema.
+ *
+ * As on [MIGRATION_6_7], the DDL is written out by hand and has to match what Room generates from
+ * [ReadAlongCorrectionEntity] exactly: column order, affinities, nullability, the primary key
+ * clause, the foreign key clause, and the index name. A mismatch still migrates and still stores
+ * rows, then fails Room's schema validation the next time the app opens the database.
+ * `Migration7To8Test` pins both statements to the committed version 8 export rather than trusting
+ * this comment.
+ */
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `read_along_corrections` (
+                `audiobookId` INTEGER NOT NULL,
+                `chapterIndex` INTEGER NOT NULL,
+                `audioMs` INTEGER NOT NULL,
+                `charOffset` INTEGER NOT NULL,
+                PRIMARY KEY(`audiobookId`, `chapterIndex`),
+                FOREIGN KEY(`audiobookId`) REFERENCES `audiobooks`(`id`)
+                    ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_read_along_corrections_audiobookId` " +
+                "ON `read_along_corrections` (`audiobookId`)",
+        )
+    }
+}

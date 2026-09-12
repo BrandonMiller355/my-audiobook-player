@@ -2,6 +2,7 @@ package com.brandonmiller.audiobookplayer.data
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
@@ -163,6 +164,34 @@ interface LibraryDao {
 
     @Query("UPDATE audiobooks SET readAlongChapterOffset = :offset WHERE id = :audiobookId")
     suspend fun updateReadAlongChapterOffset(audiobookId: Long, offset: Int)
+
+    /**
+     * The owner's corrections for one book (`add-readalong-nudge` design D1). Ordered by position so
+     * they drop into the anchor list the map interpolates over without a second sort.
+     *
+     * Read once when the reader builds the map rather than observed: the reader is the only thing
+     * that writes them, and it already holds the map it just rebuilt.
+     */
+    @Query("SELECT * FROM read_along_corrections WHERE audiobookId = :audiobookId ORDER BY audioMs ASC")
+    suspend fun readAlongCorrections(audiobookId: Long): List<ReadAlongCorrectionEntity>
+
+    /**
+     * Records a correction, replacing any the same chapter already carried (design D7).
+     *
+     * [OnConflictStrategy.REPLACE] against the composite primary key is where replace-don't-
+     * accumulate actually lives. The UI never has to look for an existing row, and no path through
+     * it can leave a chapter carrying two corrections that disagree.
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertReadAlongCorrection(correction: ReadAlongCorrectionEntity)
+
+    /**
+     * Discards every correction for a book, for when the linked ebook is replaced or unlinked
+     * (design D10). A correction addresses a character offset into one specific EPUB; against a
+     * different file it points somewhere arbitrary.
+     */
+    @Query("DELETE FROM read_along_corrections WHERE audiobookId = :audiobookId")
+    suspend fun clearReadAlongCorrections(audiobookId: Long)
 
     // ---------------------------------------------------------------- notes and bookmarks
 

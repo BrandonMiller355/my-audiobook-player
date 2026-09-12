@@ -112,6 +112,7 @@ fun ReaderScreen(
     var menuOpen by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
     var brightnessOpen by remember { mutableStateOf(false) }
+    var syncOpen by remember { mutableStateOf(false) }
     var contentsOpen by remember { mutableStateOf(false) }
     // Sampled when the sheet opens rather than read during composition: `layoutInfo` is snapshot
     // state, and observing it here would recompose the whole reader on every frame of every scroll.
@@ -249,7 +250,7 @@ fun ReaderScreen(
     // any more: the system bars follow it now, so a timer that fires under an open contents list
     // takes the navigation bar away from a reader who is still using it. The timer restarts when the
     // sheet closes, so the six seconds are counted from the last thing the reader actually did.
-    val sheetOpen = contentsOpen || searchOpen || settingsOpen || brightnessOpen
+    val sheetOpen = contentsOpen || searchOpen || settingsOpen || brightnessOpen || syncOpen
     LaunchedEffect(chromeVisible, revealCount, menuOpen, sheetOpen) {
         if (!chromeVisible || menuOpen || sheetOpen) return@LaunchedEffect
         delay(AUTO_HIDE_MS)
@@ -293,6 +294,7 @@ fun ReaderScreen(
             menuOpen = menuOpen,
             hasContents = state.book?.contents?.isNotEmpty() == true,
             canSearch = state.book != null,
+            canSync = readAlongActive,
             onMenuOpenChange = { menuOpen = it },
             onBack = onBack,
             onPlayPause = viewModel::togglePlayPause,
@@ -305,6 +307,7 @@ fun ReaderScreen(
             onBrightness = { brightnessOpen = true },
             onChange = { pickEbook.launch(OpenPersistableDocument.EBOOK_MIME_TYPES) },
             onBookmark = viewModel::bookmark,
+            onSync = { syncOpen = true },
             onUnlink = viewModel::unlinkEbook,
         )
 
@@ -348,6 +351,18 @@ fun ReaderScreen(
             onTextScale = viewModel::setTextScale,
             onLineSpacing = viewModel::setLineSpacing,
             onSerif = viewModel::setSerif,
+        )
+    }
+
+    // Judged against the page behind it, so it stays open while the owner watches the text move
+    // (design D11). Nothing here pauses or seeks: the nudge replaces the map and the glide carries
+    // the page, which is what lets this be a sheet rather than a mode.
+    if (syncOpen) {
+        SyncSheet(
+            correctionDeltaMs = state.correctionDeltaMs,
+            atLimit = state.correctionAtLimit,
+            onDismiss = { syncOpen = false },
+            onNudge = viewModel::nudge,
         )
     }
 

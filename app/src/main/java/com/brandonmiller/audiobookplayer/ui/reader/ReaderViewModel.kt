@@ -16,6 +16,7 @@ import com.brandonmiller.audiobookplayer.R
 import com.brandonmiller.audiobookplayer.data.AudiobookDatabase
 import com.brandonmiller.audiobookplayer.data.LibraryDao
 import com.brandonmiller.audiobookplayer.data.NoteEntity
+import com.brandonmiller.audiobookplayer.data.ReadAlongCorrectionEntity
 import com.brandonmiller.audiobookplayer.data.ReadingPreferences
 import com.brandonmiller.audiobookplayer.data.ReadingSettings
 import com.brandonmiller.audiobookplayer.ebook.Ebook
@@ -24,11 +25,18 @@ import com.brandonmiller.audiobookplayer.ebook.EbookSource
 import com.brandonmiller.audiobookplayer.ebook.ReadingPosition
 import com.brandonmiller.audiobookplayer.ebook.SearchHit
 import com.brandonmiller.audiobookplayer.ebook.TextPosition
+import com.brandonmiller.audiobookplayer.playback.NUDGE_STEP_MS
 import com.brandonmiller.audiobookplayer.playback.PlaybackService
+import com.brandonmiller.audiobookplayer.playback.ReadAlongAnchor
+import com.brandonmiller.audiobookplayer.playback.ReadAlongCorrection
 import com.brandonmiller.audiobookplayer.playback.ReadAlongMap
+import com.brandonmiller.audiobookplayer.playback.anchorsWithCorrections
 import com.brandonmiller.audiobookplayer.playback.audioChaptersFrom
 import com.brandonmiller.audiobookplayer.playback.chapterTimeline
+import com.brandonmiller.audiobookplayer.playback.correctionDeltaMs
+import com.brandonmiller.audiobookplayer.playback.correctionFor
 import com.brandonmiller.audiobookplayer.playback.currentLocation
+import com.brandonmiller.audiobookplayer.playback.expressibleCorrectionRange
 import com.brandonmiller.audiobookplayer.playback.matchChapters
 import com.brandonmiller.audiobookplayer.playback.noteAnchorFor
 import com.brandonmiller.audiobookplayer.ui.library.UriPermissionHolder
@@ -73,6 +81,22 @@ data class ReaderUiState(
     val readAlongMap: ReadAlongMap? = null,
     /** Current playback position in ms, used to drive auto-scroll. */
     val playbackPositionMs: Long? = null,
+    /**
+     * How far the chapter being listened to has been corrected, in milliseconds of narration
+     * (`add-readalong-nudge` design D4). Positive means the text has been pushed later.
+     *
+     * Zero for an uncorrected chapter, which is also what the stepper shows before the first nudge.
+     * Only meaningful while [readAlongMap] is non-null, since that is the only time the control that
+     * reads it is offered at all.
+     */
+    val correctionDeltaMs: Long = 0,
+    /**
+     * Set when the last nudge asked for more than the chapter could hold, so the sheet can say why
+     * the figure stopped moving rather than letting the control look unresponsive.
+     *
+     * The room runs out near a chapter boundary, where there is little text left to redistribute.
+     */
+    val correctionAtLimit: Boolean = false,
 )
 
 class ReaderViewModel(
@@ -90,6 +114,30 @@ class ReaderViewModel(
     private var controller: MediaController? = null
     private var searchJob: Job? = null
     private var positionTrackingJob: Job? = null
+
+    /**
+     * The chapter-boundary anchors on their own, before any correction is merged in, and the map
+     * they make (`add-readalong-nudge` design D6).
+     *
+     * Kept because every correction is measured and re-applied against the *uncorrected*
+     * correspondence. Reading a delta back out of the corrected map and then re-applying it would
+     * compound: each nudge would be relative to the previous nudge's result rather than to the
+     * automatic matching, and the displayed figure would stop meaning "how far I have moved this
+     * chapter" after the second tap.
+     */
+    private var baseAnchors: List<ReadAlongAnchor> = emptyList()
+    private var baseMap: ReadAlongMap? = null
+
+    /** Corrections as loaded, by audio chapter index — at most one per chapter (design D7). */
+    private var corrections: MutableMap<Int, ReadAlongCorrection> = mutableMapOf()
+
+    /** The burst being assembled: its frozen reference time, and the chapter it belongs to. */
+    private var nudgeAnchorMs: Long? = null
+    private var nudgeChapterIndex: Int? = null
+    private var nudgeCommitJob: Job? = null
+
+    /** Which chapter the pending write is for, so a burst that crosses a boundary cannot strand it. */
+    private var pendingCommitChapter: Int? = null
 
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -142,6 +190,9 @@ class ReaderViewModel(
                 if (pos != null) {
                     _state.update { it.copy(playbackPositionMs = pos) }
                 }
+                // Cheap, and it has to happen on some clock: playing on out of a corrected chapter
+                // must stop the stepper reporting the previous chapter's figure.
+                refreshCorrectionDelta()
                 withContext(Dispatchers.Default) { kotlinx.coroutines.delay(250) }
             }
         }
@@ -243,7 +294,27 @@ class ReaderViewModel(
             .associate { it.chapterIndex to it.title }
 
         val anchors = matchChapters(audioChaptersFrom(spans, titles), ebook, manualOffset = chapterOffset)
-        return if (anchors.isEmpty()) null else ReadAlongMap(anchors)
+        if (anchors.isEmpty()) return null
+
+        baseAnchors = anchors
+        baseMap = ReadAlongMap(anchors)
+        corrections = withContext(Dispatchers.IO) { dao.readAlongCorrections(bookId) }
+            .associate { it.chapterIndex to ReadAlongCorrection(it.audioMs, it.charOffset) }
+            .toMutableMap()
+
+        return ReadAlongMap(anchorsWithCorrections(anchors, corrections.values.toList()))
+    }
+
+    /** Rebuilds the corrected map from the anchors already matched, without re-reading the book. */
+    private fun remapWithCorrections(): ReadAlongMap? {
+        if (baseAnchors.isEmpty()) return null
+        return ReadAlongMap(anchorsWithCorrections(baseAnchors, corrections.values.toList()))
+    }
+
+    /** Which audio chapter [ms] falls in, or null when the timeline cannot say. */
+    private fun chapterIndexAt(ms: Long): Int? {
+        val spans = controller?.chapterTimeline()?.chapterSpans() ?: return null
+        return spans.lastOrNull { it.absoluteStartMs <= ms }?.chapterIndex
     }
 
     /** Consumed by the screen once it has scrolled, so a recomposition does not scroll again. */
@@ -352,6 +423,138 @@ class ReaderViewModel(
     /** Where playback is now, for capturing the position a settle-seek is about to move away from. */
     fun currentPositionMs(): Long? = controller?.currentPosition
 
+    // ------------------------------------------------------------------ owner corrections
+
+    /**
+     * Moves the text one step earlier or later against the narration, for the chapter being
+     * listened to (`add-readalong-nudge` design D3, D5, D6).
+     *
+     * Note what this does *not* do: it does not scroll the page and it does not touch the audio. It
+     * replaces the map and lets the glide carry the page to the corrected position on its own. A
+     * direct scroll would be undone within one frame — the glide chases `currentTextPosition()`
+     * every frame and would simply pull the page back — and it would also read as user input to the
+     * settle handler, which seeks. Going through the map avoids both, which is what lets this be a
+     * plain pair of buttons rather than a mode that has to suppress the reader's other behavior.
+     */
+    fun nudge(steps: Int) {
+        if (steps == 0) return
+        val base = baseMap ?: return
+        val ctrl = controller ?: return
+
+        val now = ctrl.currentPosition
+        val chapter = chapterIndexAt(now) ?: return
+
+        // A burst is one adjustment: the reference time is frozen at its first tap, because the
+        // audio carries on playing and a reference that moved would make each tap mean something
+        // slightly different from the last. A tap in a different chapter starts a new burst.
+        if (nudgeAnchorMs == null || nudgeChapterIndex != chapter) {
+            nudgeAnchorMs = now
+            nudgeChapterIndex = chapter
+        }
+        val anchorMs = nudgeAnchorMs ?: now
+
+        val wanted = currentCorrectionDeltaMs(chapter) + steps * NUDGE_STEP_MS
+        // What the chapter can actually hold. Near a boundary this collapses toward zero, and
+        // accepting more than it would produce a segment the text sprints or crawls through.
+        val room = expressibleCorrectionRange(baseAnchors, anchorMs) ?: return
+        val delta = wanted.coerceIn(room)
+
+        val correction = correctionFor(base, anchorMs, delta)
+        corrections[chapter] = correction
+
+        val remapped = remapWithCorrections()
+        _state.update {
+            it.copy(
+                readAlongMap = remapped,
+                correctionDeltaMs = correctionDeltaMs(base, correction),
+                // Say so rather than letting the stepper appear to stop responding.
+                correctionAtLimit = wanted != delta,
+            )
+        }
+
+        scheduleCorrectionCommit(chapter)
+    }
+
+    /**
+     * Writes the burst once it has stopped, rather than once per tap: a run of taps is one
+     * adjustment, and a write each time would put a database round trip between a button and the
+     * page moving. Replaces whatever the chapter carried before (design D7).
+     *
+     * A burst can change chapters underneath itself — the audio keeps playing while the owner taps,
+     * so a run of taps near a chapter boundary can start in one chapter and finish in the next. The
+     * outgoing chapter's correction is written *before* the new delay starts rather than having its
+     * pending write cancelled: it is already applied to the map and visible on the page, and
+     * cancelling the write would leave it showing until the next reload silently dropped it. That
+     * divergence between what the reader shows and what the book carries is the one failure this
+     * scheduling can produce, so it is closed here rather than documented.
+     *
+     * Both writes stay inside the single tracked job, so [cancelPendingNudge] still stops everything
+     * a relink needs stopped.
+     */
+    private fun scheduleCorrectionCommit(chapter: Int) {
+        val outgoing = pendingCommitChapter?.takeIf { it != chapter }
+        nudgeCommitJob?.cancel()
+        pendingCommitChapter = chapter
+        nudgeCommitJob = viewModelScope.launch {
+            outgoing?.let { commitCorrection(it) }
+            kotlinx.coroutines.delay(NUDGE_COMMIT_DELAY_MS)
+            commitCorrection(chapter)
+            // The burst is over once it is written; the next tap freezes a fresh reference time.
+            pendingCommitChapter = null
+            nudgeAnchorMs = null
+            nudgeChapterIndex = null
+        }
+    }
+
+    private suspend fun commitCorrection(chapter: Int) {
+        val correction = corrections[chapter] ?: return
+        withContext(Dispatchers.IO) {
+            dao.upsertReadAlongCorrection(
+                ReadAlongCorrectionEntity(
+                    audiobookId = bookId,
+                    chapterIndex = chapter,
+                    audioMs = correction.audioMs,
+                    charOffset = correction.charOffset,
+                ),
+            )
+        }
+    }
+
+    /**
+     * Abandons a burst that has not been written yet, for when the thing it corrects is going away.
+     *
+     * Without this, a relink that lands inside the commit delay would clear the table and then have
+     * the pending write put the old book's correction straight back into it.
+     */
+    private fun cancelPendingNudge() {
+        nudgeCommitJob?.cancel()
+        nudgeCommitJob = null
+        pendingCommitChapter = null
+        nudgeAnchorMs = null
+        nudgeChapterIndex = null
+    }
+
+    /** How far the chapter has already been moved, which is what a further nudge adds to. */
+    private fun currentCorrectionDeltaMs(chapter: Int): Long {
+        val base = baseMap ?: return 0
+        val correction = corrections[chapter] ?: return 0
+        return correctionDeltaMs(base, correction)
+    }
+
+    /**
+     * Keeps the stepper's figure describing the chapter actually being listened to, so that playing
+     * on into an uncorrected chapter shows zero rather than the previous chapter's correction.
+     */
+    private fun refreshCorrectionDelta() {
+        if (_state.value.readAlongMap == null) return
+        val now = controller?.currentPosition ?: return
+        val chapter = chapterIndexAt(now) ?: return
+        val delta = currentCorrectionDeltaMs(chapter)
+        if (delta != _state.value.correctionDeltaMs) {
+            _state.update { it.copy(correctionDeltaMs = delta, correctionAtLimit = false) }
+        }
+    }
+
     private var lastSeekPreviousMs = 0L
 
     /**
@@ -392,6 +595,13 @@ class ReaderViewModel(
 
     companion object {
         private const val SEEK_DEAD_ZONE_MS = 3000L
+
+        /**
+         * How long after the last tap a burst is written. Long enough to cover the gap between
+         * taps as the owner judges the result, short enough that leaving the reader immediately
+         * after adjusting still saves it.
+         */
+        private const val NUDGE_COMMIT_DELAY_MS = 1_200L
 
         fun factory(context: Context, bookId: String): ViewModelProvider.Factory {
             val appContext = context.applicationContext
@@ -434,8 +644,14 @@ class ReaderViewModel(
 
             withContext(Dispatchers.IO) {
                 dao.linkEbook(bookId, uri.toString())
+                // A correction is a character offset into one specific EPUB (design D10). Against a
+                // different file it addresses an arbitrary place, so it goes with the book it was
+                // made in — alongside the link itself, so no reload can observe the two disagreeing.
+                dao.clearReadAlongCorrections(bookId)
                 previous?.takeIf { it != uri.toString() }?.let { permissions.release(it.toUri()) }
             }
+            corrections.clear()
+            cancelPendingNudge()
             // Hits index the old book's blocks, so they would scroll to arbitrary places in the new
             // one. They go with the book they were found in.
             searchJob?.cancel()
@@ -460,10 +676,14 @@ class ReaderViewModel(
     fun unlinkEbook() {
         viewModelScope.launch {
             val previous = withContext(Dispatchers.IO) { dao.findBook(bookId)?.ebookUri }
+            cancelPendingNudge()
             withContext(Dispatchers.IO) {
                 dao.unlinkEbook(bookId)
+                // As on a relink (design D10): they address a book that is no longer linked.
+                dao.clearReadAlongCorrections(bookId)
                 previous?.let { permissions.release(it.toUri()) }
             }
+            corrections.clear()
             _state.update { it.copy(closed = true) }
         }
     }

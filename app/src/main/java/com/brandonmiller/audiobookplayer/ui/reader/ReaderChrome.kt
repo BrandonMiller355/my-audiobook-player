@@ -91,6 +91,7 @@ fun ReaderChrome(
     menuOpen: Boolean,
     hasContents: Boolean,
     canSearch: Boolean,
+    canSync: Boolean,
     onMenuOpenChange: (Boolean) -> Unit,
     onBack: () -> Unit,
     onPlayPause: () -> Unit,
@@ -99,6 +100,7 @@ fun ReaderChrome(
     onSettings: () -> Unit,
     onBrightness: () -> Unit,
     onBookmark: () -> Unit,
+    onSync: () -> Unit,
     onChange: () -> Unit,
     onUnlink: () -> Unit,
 ) {
@@ -163,12 +165,14 @@ fun ReaderChrome(
                             expanded = menuOpen,
                             hasContents = hasContents,
                             canSearch = canSearch,
+                            canSync = canSync,
                             onDismiss = { onMenuOpenChange(false) },
                             onSearch = onSearch,
                             onContents = onContents,
                             onSettings = onSettings,
                             onBrightness = onBrightness,
                             onBookmark = onBookmark,
+                            onSync = onSync,
                             onChange = onChange,
                             onUnlink = onUnlink,
                         )
@@ -195,12 +199,14 @@ private fun ReaderMenu(
     expanded: Boolean,
     hasContents: Boolean,
     canSearch: Boolean,
+    canSync: Boolean,
     onDismiss: () -> Unit,
     onSearch: () -> Unit,
     onContents: () -> Unit,
     onSettings: () -> Unit,
     onBrightness: () -> Unit,
     onBookmark: () -> Unit,
+    onSync: () -> Unit,
     onChange: () -> Unit,
     onUnlink: () -> Unit,
 ) {
@@ -217,6 +223,10 @@ private fun ReaderMenu(
             ReaderMenuItem(stringResource(R.string.reader_search)) { onDismiss(); onSearch() }
         }
         ReaderMenuItem(stringResource(R.string.reader_bookmark)) { onDismiss(); onBookmark() }
+        // Only for a book that follows the narration: there is nothing to line up otherwise.
+        if (canSync) {
+            ReaderMenuItem(stringResource(R.string.reader_sync)) { onDismiss(); onSync() }
+        }
         ReaderMenuItem(stringResource(R.string.reader_settings)) { onDismiss(); onSettings() }
         ReaderMenuItem(stringResource(R.string.reader_brightness)) { onDismiss(); onBrightness() }
 
@@ -526,6 +536,79 @@ fun ReadingSettingsSheet(
             }
         }
     }
+}
+
+/**
+ * Lining the text up with the narration, for a chapter the automatic correspondence gets wrong
+ * (`add-readalong-nudge` design D4, D11).
+ *
+ * A stepper, like the reading settings, and for the same reason those are steppers: a small number
+ * of useful values, hit without looking. What is different is that this one is *judged against the
+ * page behind it* rather than against its own value, which is why it is a single short row — the
+ * sheet has to leave the text visible above it while the owner watches it move.
+ *
+ * The two controls are framed as an action — move the text earlier, move the text later — rather
+ * than as a diagnosis. "The text is ahead" asks the owner to work out which of the two things is
+ * wrong before they can press anything, and that judgment is routinely made backward. Pressing a
+ * direction and watching the page needs no such reasoning.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SyncSheet(
+    correctionDeltaMs: Long,
+    atLimit: Boolean,
+    onDismiss: () -> Unit,
+    onNudge: (Int) -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = ReaderSheet,
+    ) {
+        Column(
+            modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Stepper(
+                label = stringResource(R.string.reader_sync_label),
+                value = correctionLabel(correctionDeltaMs),
+                decreaseLabel = stringResource(R.string.reader_sync_earlier),
+                increaseLabel = stringResource(R.string.reader_sync_later),
+                onDecrease = { onNudge(-1) },
+                onIncrease = { onNudge(1) },
+            )
+            Text(
+                // A chapter can only redistribute the text it has left, so near a break the stepper
+                // runs out of room. Saying so beats letting the buttons look broken.
+                text = stringResource(
+                    if (atLimit) R.string.reader_sync_at_limit else R.string.reader_sync_help,
+                ),
+                color = ReaderChromeInkDim,
+                fontSize = 13.sp,
+            )
+        }
+    }
+}
+
+/**
+ * The correction as a phrase rather than a signed number: "20s later" says which way the text moved,
+ * where "+20s" needs the reader to know which direction positive is.
+ */
+@Composable
+private fun correctionLabel(deltaMs: Long): String {
+    if (deltaMs == 0L) return stringResource(R.string.reader_sync_none)
+    val seconds = kotlin.math.abs(deltaMs) / 1000
+    val amount = if (seconds < 60) {
+        "${seconds}s"
+    } else {
+        val minutes = seconds / 60
+        val remainder = seconds % 60
+        if (remainder == 0L) "${minutes}m" else "${minutes}m ${remainder}s"
+    }
+    return stringResource(
+        if (deltaMs < 0) R.string.reader_sync_earlier_by else R.string.reader_sync_later_by,
+        amount,
+    )
 }
 
 /**

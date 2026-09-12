@@ -109,6 +109,95 @@ class ReadAlongMapTest {
         assertEquals(epilogue.absoluteMs, map.msForChars(target))
     }
 
+    // ------------------------------------------------------------------ owner corrections (D8)
+
+    /**
+     * A correction placed mid-chapter is the shape `add-readalong-nudge` produces: it splits one
+     * chapter's segment in two, and both halves then imply rates well away from the book's median.
+     * Without the [ReadAlongAnchor.ownerEntered] exemption the guard substitutes that median and the
+     * correspondence no longer passes through the point the owner entered — which is the whole
+     * failure design D8 exists to prevent.
+     */
+    // Ten regular chapters at the median 0.01 chars/ms, then a twelfth anchor 20 seconds later
+    // carrying 1,800 chars — 9x the median, comfortably past RATE_GUARD_RATIO.
+    private val beforeOutlier = (0..9).map { i -> ReadAlongAnchor(i * 100_000L, i * 1_000) }
+    private val afterOutlier = ReadAlongAnchor(1_000_000, 11_000)
+
+    // Sampled halfway through the outlying segment, not at its edges: an anchor maps to itself
+    // whether the segment is guarded or not, so only an interior point tells the two paths apart.
+    private val midOutlierMs = 910_000L
+    private val guardedChars = 9_100 // 9_000 + median rate across 10s
+    private val linearChars = 9_900 // 9_000 + half of the segment's own 1,800
+
+    @Test
+    fun `the correspondence passes through an owner correction that would otherwise be guarded`() {
+        val correction = ReadAlongAnchor(920_000, 10_800, ownerEntered = true)
+        val map = ReadAlongMap(beforeOutlier + correction + afterOutlier)
+
+        assertEquals(10_800, map.charsForMs(920_000))
+        assertEquals(920_000L, map.msForChars(10_800))
+        // The exemption is what this asserts: interpolation across the segment stays linear rather
+        // than falling back to the median it is 9x away from.
+        assertEquals(linearChars, map.charsForMs(midOutlierMs))
+    }
+
+    @Test
+    fun `a chapter carrying no correction is still guarded`() {
+        // The same book, but the outlying segment is an ordinary matched chapter rather than a
+        // correction — so the guard still contains it, exactly as it did before D8.
+        val unmarked = ReadAlongAnchor(920_000, 10_800)
+        val map = ReadAlongMap(beforeOutlier + unmarked + afterOutlier)
+
+        assertEquals(guardedChars, map.charsForMs(midOutlierMs))
+    }
+
+    /** Design D2: a correction bends the chapter, it does not move either boundary. */
+    @Test
+    fun `both chapter boundaries stay exact with a correction between them`() {
+        val chapterStart = ReadAlongAnchor(100_000, 1_000)
+        val correction = ReadAlongAnchor(140_000, 1_800, ownerEntered = true)
+        val chapterEnd = ReadAlongAnchor(200_000, 2_000)
+        val map = ReadAlongMap(listOf(ReadAlongAnchor(0, 0), chapterStart, correction, chapterEnd))
+
+        assertEquals(1_000, map.charsForMs(100_000))
+        assertEquals(2_000, map.charsForMs(200_000))
+        assertEquals(100_000L, map.msForChars(1_000))
+        assertEquals(200_000L, map.msForChars(2_000))
+    }
+
+    /** A correction must not break the property the whole map rests on. */
+    @Test
+    fun `the map still never runs backward with a correction in it`() {
+        val regularChapters = (0..9).map { i -> ReadAlongAnchor(i * 100_000L, i * 1_000) }
+        val correction = ReadAlongAnchor(920_000, 10_800, ownerEntered = true)
+        val map = ReadAlongMap(regularChapters + correction + ReadAlongAnchor(1_000_000, 11_000))
+
+        var previous = map.charsForMsExact(-10_000)
+        for (ms in -10_000L..1_100_000L step 250) {
+            val current = map.charsForMsExact(ms)
+            assertTrue("went backward at ${ms}ms: $previous then $current", current >= previous)
+            previous = current
+        }
+    }
+
+    /** A correction only reshapes its own chapter — design D2's confinement claim. */
+    @Test
+    fun `a correction leaves neighboring chapters untouched`() {
+        val chapters = (0..4).map { i -> ReadAlongAnchor(i * 100_000L, i * 1_000) }
+        val uncorrected = ReadAlongMap(chapters)
+        val correction = ReadAlongAnchor(250_000, 2_800, ownerEntered = true)
+        val corrected = ReadAlongMap(chapters.take(3) + correction + chapters.drop(3))
+
+        // The corrected chapter runs 200_000..300_000; everything outside it is unchanged.
+        for (ms in longArrayOf(0, 50_000, 100_000, 150_000, 200_000, 300_000, 350_000, 400_000)) {
+            assertEquals(
+                "chapter outside the correction moved at ${ms}ms",
+                uncorrected.charsForMs(ms),
+                corrected.charsForMs(ms),
+            )
+        }
+    }
+
     // ------------------------------------------------------------------ degenerate shapes
 
     @Test

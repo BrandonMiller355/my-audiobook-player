@@ -5,10 +5,20 @@ import kotlin.math.roundToLong
 
 /**
  * One point where the audio's absolute position and the book's absolute character position are
- * known to correspond exactly — a chapter boundary in this change (`add-readalong-scroll` design
- * D2), and potentially something finer in a later one without anything below needing to change.
+ * known to correspond exactly — a chapter boundary from `matchChapters`, or a correction the owner
+ * entered in the reader (`add-readalong-nudge` design D1), which is the "something finer" the
+ * original form of this type anticipated.
+ *
+ * [ownerEntered] is the only thing that distinguishes the two, and it exists for one purpose: the
+ * rate guard below is a defense against uncertain automatic matching, and a position the owner
+ * stated by hand is not that. Defaulted so every chapter-boundary construction site reads exactly
+ * as it did before.
  */
-data class ReadAlongAnchor(val absoluteMs: Long, val absoluteChars: Int)
+data class ReadAlongAnchor(
+    val absoluteMs: Long,
+    val absoluteChars: Int,
+    val ownerEntered: Boolean = false,
+)
 
 /**
  * The piecewise-linear correspondence between a place in the audio and a place in the ebook's text
@@ -56,7 +66,7 @@ class ReadAlongMap(private val anchors: List<ReadAlongAnchor>) {
         if (to.absoluteMs == from.absoluteMs) return to.absoluteChars.toDouble()
 
         val rate = segmentRate(from, to)
-        return if (isGuarded(rate)) {
+        return if (isGuarded(rate, from, to)) {
             val advanced = medianCharsPerMs * (ms - from.absoluteMs)
             (from.absoluteChars + advanced)
                 .coerceIn(from.absoluteChars.toDouble(), to.absoluteChars.toDouble())
@@ -79,7 +89,7 @@ class ReadAlongMap(private val anchors: List<ReadAlongAnchor>) {
         if (to.absoluteChars == from.absoluteChars) return to.absoluteMs
 
         val rate = segmentRate(from, to)
-        return if (isGuarded(rate)) {
+        return if (isGuarded(rate, from, to)) {
             // The segment's real char span outruns what the guarded rate reaches in its duration —
             // that excess is the non-narrated tail (spike finding 5). A target inside it has no
             // audio to seek to, so it clamps at the segment's end rather than extrapolating past it.
@@ -102,8 +112,16 @@ class ReadAlongMap(private val anchors: List<ReadAlongAnchor>) {
      * than [RATE_GUARD_RATIO], the trigger for D13's guard. The epilogue in the spike findings is
      * roughly 5x the median; this catches that with room to spare before ordinary chapter-to-chapter
      * variation (measured p10–p90 spread of 14.6%) would ever trip it.
+     *
+     * A segment bounded by an [owner-entered anchor][ReadAlongAnchor.ownerEntered] is never guarded
+     * (`add-readalong-nudge` design D8). The guard contains automatic chapter matching, which can be
+     * wrong with nothing to signal it; a correction the owner entered is a statement about where the
+     * narrator actually is. Splitting one chapter around a correction routinely leaves a short
+     * segment whose rate is far from the median, and without this exemption the guard would
+     * substitute that median and quietly discard the correction just entered.
      */
-    private fun isGuarded(rate: Double): Boolean {
+    private fun isGuarded(rate: Double, from: ReadAlongAnchor, to: ReadAlongAnchor): Boolean {
+        if (from.ownerEntered || to.ownerEntered) return false
         if (!rate.isFinite() || medianCharsPerMs <= 0.0) return false
         val ratio = rate / medianCharsPerMs
         return ratio > RATE_GUARD_RATIO || ratio < 1.0 / RATE_GUARD_RATIO
@@ -137,7 +155,12 @@ class ReadAlongMap(private val anchors: List<ReadAlongAnchor>) {
         return if (sorted.size % 2 == 0) (sorted[mid - 1] + sorted[mid]) / 2.0 else sorted[mid]
     }
 
-    private companion object {
+    internal companion object {
+        /**
+         * Also read by `expressibleCorrectionRange`, which bounds a correction so that it cannot
+         * produce a segment this far off the chapter's own rate in the first place — the two have to
+         * agree or a correction could be accepted and then quietly contained by the guard.
+         */
         const val RATE_GUARD_RATIO = 2.0
     }
 }

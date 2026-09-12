@@ -126,8 +126,21 @@
     <string name="reader_bookmark">Bookmark this spot</string>
     <string name="reader_settings">Text and typeface</string>
     <string name="reader_settings_close">Close settings</string>
+    <string name="reader_sync">Line up with the narration</string>
     <string name="reader_change">Change ebook</string>
     <string name="reader_unlink">Unlink ebook</string>
+
+    <!-- Read-along correction -->
+    <string name="reader_sync_label">Text position</string>
+    <string name="reader_sync_earlier">Move the text earlier</string>
+    <string name="reader_sync_later">Move the text later</string>
+    <string name="reader_sync_help">Move the text until it matches what you are hearing. This adjusts
+        the current chapter only.</string>
+    <string name="reader_sync_none">Matching the narration</string>
+    <string name="reader_sync_at_limit">That is as far as this chapter can move the text. Near a
+        chapter break there is little text left to shift.</string>
+    <string name="reader_sync_earlier_by">%1$s earlier</string>
+    <string name="reader_sync_later_by">%1$s later</string>
 
     <string name="reader_unavailable_title">Ebook unavailable</string>
     <string name="reader_unavailable_relink">Link a different ebook</string>

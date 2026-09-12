@@ -152,6 +152,41 @@ data class NoteEntity(
     val createdAt: Long,
 )
 
+/**
+ * One owner-entered correction to the read-along correspondence, for one chapter of one book
+ * (`add-readalong-nudge` design D1, D9).
+ *
+ * The pair is the whole record: at [audioMs] the narrator is at [charOffset] characters into the
+ * ebook. Deliberately not a delta against what the map said at the time — a delta is only meaningful
+ * relative to the map that produced it, and the map is rebuilt from scratch on every open. The pair
+ * stays a true statement about the book however the chapter matching later changes.
+ *
+ * Keyed on the *audio* [chapterIndex], as [ChapterEntity] and [NoteEntity] are, because that is the
+ * side that stays addressable. [charOffset] points into one specific EPUB, which is why relinking
+ * discards these rows rather than carrying them over (design D10).
+ */
+@Entity(
+    tableName = "read_along_corrections",
+    primaryKeys = ["audiobookId", "chapterIndex"],
+    foreignKeys = [
+        ForeignKey(
+            entity = AudiobookEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["audiobookId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("audiobookId")],
+)
+data class ReadAlongCorrectionEntity(
+    val audiobookId: Long,
+    val chapterIndex: Int,
+    /** Absolute position in the audio, in the same book-wide milliseconds the map interpolates over. */
+    val audioMs: Long,
+    /** Absolute position in the ebook's text, in characters from the start of the book. */
+    val charOffset: Int,
+)
+
 /** A library row: the book plus the derived figures the list and the resume card show. */
 data class LibraryBook(
     val id: Long,
