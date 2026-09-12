@@ -1,6 +1,8 @@
 package com.brandonmiller.audiobookplayer.ui.reader
 
 import android.app.Activity
+import android.content.ClipboardManager
+import android.content.Context
 import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.background
@@ -18,10 +20,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -85,6 +91,21 @@ private val ReaderInkDim = Color(0xFFB4B4B4)
 private val ReaderRule = Color(0xFF3A3A3A)
 
 /**
+ * The selection wash and its handles, reader-local for the reason the colors above are.
+ *
+ * Compose derives selection colors from the Material theme's primary, and this app's primary is a
+ * muted warm neutral — which on a pure black page washes out to very nearly black. On device the
+ * highlight was almost impossible to see. Amber is a highlighter, it is unmistakable against black,
+ * and it sits with the palette's warmth rather than fighting it.
+ *
+ * The alpha is the whole balance: the band has to read as marked against pure black while the white
+ * text drawn over it stays comfortable. At this value the wash composites to roughly `0xFF685121`,
+ * which clears the page by a visible margin and still leaves the text far above the contrast floor.
+ */
+private val ReaderSelectionHandle = Color(0xFFE8B44A)
+private val ReaderSelectionWash = ReaderSelectionHandle.copy(alpha = 0.45f)
+
+/**
  * Long enough to read the controls and choose one. Four seconds proved too short in device testing —
  * the chrome kept vanishing between deciding and reaching. The row is shorter now that the rest of
  * the actions are behind a menu, but the reach is the same and the menu itself holds this open.
@@ -112,6 +133,7 @@ fun ReaderScreen(
     var menuOpen by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
     var brightnessOpen by remember { mutableStateOf(false) }
+    var syncOpen by remember { mutableStateOf(false) }
     var contentsOpen by remember { mutableStateOf(false) }
     // Sampled when the sheet opens rather than read during composition: `layoutInfo` is snapshot
     // state, and observing it here would recompose the whole reader on every frame of every scroll.
@@ -157,6 +179,31 @@ fun ReaderScreen(
             snackbarHostState.showSnackbar(it)
             viewModel.consumePickError()
         }
+    }
+
+    // Says that Copy worked, because nothing else does.
+    //
+    // Copy belongs to the platform's own selection toolbar, and the platform normally answers it with
+    // the clipboard chip SystemUI puts up. It does not here: this screen runs with the system bars
+    // hidden, and SystemUI suppresses that overlay — device logs say so in as many words. The copy
+    // lands, silently, which is indistinguishable from a dead button.
+    //
+    // The clip changing is the only hook there is. The toolbar item is the platform's, and Compose
+    // exposes neither the live selection nor the action, so there is nothing of ours to hang this on.
+    // Listening costs no permission and reads nothing: the callback carries no clip, only the fact
+    // that one arrived, which is all this needs to say "Copied".
+    val context = LocalContext.current
+    var copyCount by remember { mutableStateOf(0) }
+    DisposableEffect(context) {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        val listener = ClipboardManager.OnPrimaryClipChangedListener { copyCount++ }
+        clipboard?.addPrimaryClipChangedListener(listener)
+        onDispose { clipboard?.removePrimaryClipChangedListener(listener) }
+    }
+
+    val copiedMessage = stringResource(R.string.reader_selection_copied)
+    LaunchedEffect(copyCount) {
+        if (copyCount > 0) snackbarHostState.showSnackbar(copiedMessage)
     }
 
     // Same flow as the Player's mark: the navigation is the confirmation (design D8).
@@ -211,12 +258,30 @@ fun ReaderScreen(
     // The audio's place in the text wins in the end either way, so it costs nothing to wait.
     LaunchedEffect(readAlongActive, state.book, restored) {
         if (!readAlongActive || !restored) return@LaunchedEffect
+        var settled = false
         while (true) {
-            withFrameNanos { }
+            // Per frame only while there is something to chase.
+            //
+            // This used to pump `withFrameNanos` unconditionally, forever, and that was a real bug
+            // rather than a tidiness problem. An awaited frame schedules the next one, so a paused
+            // book — whose target cannot move on its own — still rendered and relaid the list out
+            // continuously over a page that was not moving. Measured on device: 118 frames in four
+            // idle seconds, most of them janky, on a screen that also holds the display awake.
+            //
+            // What it broke is worse than the waste. A relayout while text is selected moves the
+            // platform's selection toolbar, and a toolbar that moves between a finger going down and
+            // coming up does not register the press — so Copy silently did nothing, often enough to
+            // look broken and intermittently enough to look haunted.
+            //
+            // Paused and converged, the target only moves if the owner nudges or seeks, and a
+            // quarter second is soon enough to catch either: the glide resumes per frame the moment
+            // a delta appears, so a nudge is still carried smoothly rather than stepped.
+            if (settled && !state.isPlaying) delay(GLIDE_IDLE_POLL_MS) else withFrameNanos { }
             // Yield the whole gesture to the user, drag and fling alike, rather than fighting it.
             if (listState.isScrollInProgress && userScrolled) continue
 
-            val target = viewModel.currentTextPosition() ?: continue
+            // Nothing to follow yet — treat it as arrived rather than spinning on it.
+            val target = viewModel.currentTextPosition() ?: run { settled = true; continue }
             val info = listState.layoutInfo
             val anchorPx = info.anchorPx()
             val onScreen = info.visibleItemsInfo.firstOrNull { it.index == target.blockIndex }
@@ -230,15 +295,30 @@ fun ReaderScreen(
                 // next frame reads that as an error to close — so the recovery becomes a jump
                 // forward followed by a jump back up, which is the opposite of following anything.
                 listState.scrollToItem(target.blockIndex, -anchorPx.roundToInt())
+                settled = false
                 continue
             }
 
             val targetPx = onScreen.offset + onScreen.size * target.fraction
             val delta = targetPx - anchorPx
-            // Sub-pixel deltas are the normal case at reading speed; LazyList accumulates them, so
-            // they must not be rounded away. The threshold only suppresses idle jitter while paused.
+            // Sub-pixel *steps* are the normal case at reading speed and are still applied — the
+            // list accumulates them, and rounding them away would put stepping back into the glide.
+            // What must not be sub-pixel is the test for having arrived. It used to be a hundredth
+            // of a pixel, which is below anything a screen can show, so on a paused page the glide
+            // spent every frame pushing a residual it had no way to close: device logs showed the
+            // same `delta=-0.23` frame after frame, then a flip to `+0.77` as a whole pixel finally
+            // landed, and back again, forever.
+            //
+            // A pixel is the real floor. Inside it the page is as arrived as it can be, so the glide
+            // stops pushing and stops asking for frames. Playing is unaffected: the target keeps
+            // moving, which holds the steady-state lag near a couple of pixels, well outside this.
             val step = delta * GLIDE_GAIN
-            if (step.absoluteValue > 0.01f) listState.scrollBy(step)
+            if (delta.absoluteValue >= GLIDE_SETTLE_PX) {
+                listState.scrollBy(step)
+                settled = false
+            } else {
+                settled = true
+            }
         }
     }
 
@@ -249,7 +329,7 @@ fun ReaderScreen(
     // any more: the system bars follow it now, so a timer that fires under an open contents list
     // takes the navigation bar away from a reader who is still using it. The timer restarts when the
     // sheet closes, so the six seconds are counted from the last thing the reader actually did.
-    val sheetOpen = contentsOpen || searchOpen || settingsOpen || brightnessOpen
+    val sheetOpen = contentsOpen || searchOpen || settingsOpen || brightnessOpen || syncOpen
     LaunchedEffect(chromeVisible, revealCount, menuOpen, sheetOpen) {
         if (!chromeVisible || menuOpen || sheetOpen) return@LaunchedEffect
         delay(AUTO_HIDE_MS)
@@ -278,12 +358,14 @@ fun ReaderScreen(
             )
 
             else -> state.book?.let { book ->
-                ReaderText(
-                    blocks = book.blocks,
-                    settings = state.settings,
-                    listState = listState,
-                    modifier = Modifier.nestedScroll(userInputGate),
-                )
+                SelectableWhilePaused(selectable = !state.isPlaying) {
+                    ReaderText(
+                        blocks = book.blocks,
+                        settings = state.settings,
+                        listState = listState,
+                        modifier = Modifier.nestedScroll(userInputGate),
+                    )
+                }
             }
         }
 
@@ -293,6 +375,7 @@ fun ReaderScreen(
             menuOpen = menuOpen,
             hasContents = state.book?.contents?.isNotEmpty() == true,
             canSearch = state.book != null,
+            canSync = readAlongActive,
             onMenuOpenChange = { menuOpen = it },
             onBack = onBack,
             onPlayPause = viewModel::togglePlayPause,
@@ -305,6 +388,7 @@ fun ReaderScreen(
             onBrightness = { brightnessOpen = true },
             onChange = { pickEbook.launch(OpenPersistableDocument.EBOOK_MIME_TYPES) },
             onBookmark = viewModel::bookmark,
+            onSync = { syncOpen = true },
             onUnlink = viewModel::unlinkEbook,
         )
 
@@ -351,6 +435,18 @@ fun ReaderScreen(
         )
     }
 
+    // Judged against the page behind it, so it stays open while the owner watches the text move
+    // (design D11). Nothing here pauses or seeks: the nudge replaces the map and the glide carries
+    // the page, which is what lets this be a sheet rather than a mode.
+    if (syncOpen) {
+        SyncSheet(
+            correctionDeltaMs = state.correctionDeltaMs,
+            atLimit = state.correctionAtLimit,
+            onDismiss = { syncOpen = false },
+            onNudge = viewModel::nudge,
+        )
+    }
+
     if (brightnessOpen) {
         BrightnessSheet(
             settings = state.settings,
@@ -381,6 +477,23 @@ private const val ANCHOR_FRACTION = 0.33f
  * handful of pixels at reading speed, which is well inside the slack the anchor already has.
  */
 private const val GLIDE_GAIN = 0.2f
+
+/**
+ * How often the glide looks up from a page that has nothing to follow.
+ *
+ * Only reached while the book is paused and the page has arrived, when the single thing that can
+ * move the target is the owner's own hand — a nudge or a seek. Short enough that neither feels
+ * delayed, long enough that an idle reader stops rendering.
+ */
+private const val GLIDE_IDLE_POLL_MS = 250L
+
+/**
+ * How close counts as arrived, in pixels.
+ *
+ * One pixel, because that is the smallest move a screen can render. Anything finer is a distance the
+ * glide can measure and can never show, which is exactly the state it used to chase forever.
+ */
+private const val GLIDE_SETTLE_PX = 1f
 
 /** The anchor line in the same coordinate space `LazyListItemInfo.offset` is measured in. */
 private fun LazyListLayoutInfo.anchorPx(): Float =
@@ -467,6 +580,37 @@ private fun ReaderWindow(settings: ReadingSettings, chromeVisible: Boolean) {
             restored.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
             window.attributes = restored
         }
+    }
+}
+
+/**
+ * Selection, but only against a page that is holding still (design D1).
+ *
+ * The gate is structural rather than a flag a gesture handler consults, which is what makes it
+ * total: when playback starts the container leaves the composition and takes any live selection with
+ * it, so "starting playback clears the selection" costs no code at all. `listState` is hoisted above
+ * this, so the reading position survives the swap; play/pause is the only thing that triggers it.
+ *
+ * It is not here to resolve a gesture collision — there isn't one. Compose settles scroll against
+ * selection by the long-press threshold: a pointer that moves before it goes to the scrollable, one
+ * that holds still past it starts a selection, and touch-and-drag therefore scrolls either way. What
+ * the gate is for is motion. While the narration plays, the glide moves the list every frame, and a
+ * selection anchored to sliding text leaves the handles chasing their own content.
+ */
+@Composable
+private fun SelectableWhilePaused(selectable: Boolean, content: @Composable () -> Unit) {
+    if (!selectable) {
+        content()
+        return
+    }
+    val colors = remember {
+        TextSelectionColors(
+            handleColor = ReaderSelectionHandle,
+            backgroundColor = ReaderSelectionWash,
+        )
+    }
+    CompositionLocalProvider(LocalTextSelectionColors provides colors) {
+        SelectionContainer(content = content)
     }
 }
 

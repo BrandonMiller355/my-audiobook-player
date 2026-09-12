@@ -2,7 +2,7 @@ package com.brandonmiller.audiobookplayer.playback
 
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
-import androidx.media3.session.MediaController
+import androidx.media3.common.Player
 import com.brandonmiller.audiobookplayer.data.AudiobookEntity
 import com.brandonmiller.audiobookplayer.data.ChapterEntity
 
@@ -16,8 +16,12 @@ import com.brandonmiller.audiobookplayer.data.ChapterEntity
  *
  * Returns the media items it set, or null when the controller was already holding this book and
  * nothing was done. Callers use that to decide whether durations need resolving.
+ *
+ * Takes a [Player] rather than a `MediaController` because that is all it uses, and because a
+ * `MediaController` cannot be constructed in a test — the ordering this function depends on is
+ * exactly the kind that needs pinning (see `LoadBookTest`).
  */
-internal fun MediaController.loadBook(
+internal fun Player.loadBook(
     book: AudiobookEntity,
     chapters: List<ChapterEntity>,
     fallbackSpeed: Float,
@@ -32,14 +36,23 @@ internal fun MediaController.loadBook(
     playWhenReady = false
 
     val mediaItems = mediaItemsFor(book, chapters)
-    setMediaItems(mediaItems)
-    prepare()
 
+    // The playlist and the saved position go in together, rather than setting the playlist and
+    // seeking to the position afterwards. Setting them separately loses the saved position
+    // outright: `setMediaItems` fires `onMediaItemTransition`, `PlaybackService` writes progress
+    // from that callback, and its scope is `Dispatchers.Main.immediate` — so the write reads
+    // `currentPosition` inline, before the seek two lines below has happened, and stores zero over
+    // the position being restored. The player then seeks and looks correct, which is what made this
+    // hard to see: the screen shows the right place while the database holds zero. Cold-open a book
+    // and leave without playing, and the book has lost its place.
     val savedIndex = book.lastMediaItemIndex
     val savedPosition = book.lastPositionMs
     if (savedIndex != null && savedPosition != null && savedIndex < mediaItems.size) {
-        seekTo(savedIndex, savedPosition)
+        setMediaItems(mediaItems, savedIndex, savedPosition)
+    } else {
+        setMediaItems(mediaItems)
     }
+    prepare()
 
     val speed = book.playbackSpeed ?: fallbackSpeed
     playbackParameters = PlaybackParameters(speed, 1.0f)

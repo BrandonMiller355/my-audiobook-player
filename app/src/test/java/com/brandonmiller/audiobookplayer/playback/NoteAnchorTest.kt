@@ -130,4 +130,105 @@ class NoteAnchorTest {
         assertEquals(PlayerTarget(2, 35_000), result.target)
         assertEquals("", result.chapterTitle)
     }
+
+    // ------------------------------------------------- a passage selected in the reader
+
+    /**
+     * `noteAnchorAt` is the read-along path (`add-reader-text-selection` design D4): the reader has
+     * already converted a selected block to an absolute audio position, so there is nothing to
+     * offset from and nothing to reach back behind.
+     *
+     * The absolute chapter starts for these durations are 0, 100s, 300s, 450s, 750s.
+     */
+    @Test
+    fun `a passage anchors at its own position`() {
+        // 120s into chapter 3, which begins at 450s absolute.
+        val result = noteAnchorAt(folderTimeline(), absoluteMs = 570_000, chapterTitles = titles)
+
+        assertEquals(PlayerTarget(3, 120_000), result.target)
+        assertEquals("Chapter 3", result.chapterTitle)
+    }
+
+    /**
+     * The distinction the whole parameter exists for. A mark tapped at this position reaches fifteen
+     * seconds back because the tap trails the passage; a selected passage names itself.
+     */
+    @Test
+    fun `a passage takes no lead-in where a tapped mark would`() {
+        val timeline = folderTimeline()
+
+        val passage = noteAnchorAt(timeline, absoluteMs = 570_000, chapterTitles = titles)
+        val tapped = noteAnchorFor(timeline, Location(chapterIndex = 3, offsetMs = 120_000), titles)
+
+        assertEquals(120_000, passage.target.positionMs)
+        assertEquals(120_000 - NOTE_LEAD_IN_MS, tapped.target.positionMs)
+    }
+
+    /**
+     * The contrast that matters at a boundary: a mark taken five seconds into a chapter rolls back
+     * into the previous one and is labeled with it. A passage selected there is *in* this chapter,
+     * and must stay in it — otherwise the entry quotes chapter 2 and names chapter 1.
+     */
+    @Test
+    fun `a passage just after a boundary stays in its own chapter`() {
+        val result = noteAnchorAt(folderTimeline(), absoluteMs = 305_000, chapterTitles = titles)
+
+        assertEquals(PlayerTarget(2, 5_000), result.target)
+        assertEquals("Chapter 2", result.chapterTitle)
+    }
+
+    @Test
+    fun `a passage at the very start of the book yields no negative position`() {
+        val result = noteAnchorAt(folderTimeline(), absoluteMs = 0, chapterTitles = titles)
+
+        assertEquals(PlayerTarget(0, 0), result.target)
+        assertEquals("Prologue", result.chapterTitle)
+    }
+
+    /**
+     * The read-along map clamps past either end, but the text can still run on past the audio — an
+     * afterword the narrator never read. The anchor lands at the end of the book rather than
+     * somewhere invalid.
+     */
+    @Test
+    fun `a passage past the end of the audio clamps to the end of the book`() {
+        val result = noteAnchorAt(folderTimeline(), absoluteMs = 900_000, chapterTitles = titles)
+
+        assertEquals(PlayerTarget(4, 50_000), result.target)
+        assertEquals("Epilogue", result.chapterTitle)
+    }
+
+    @Test
+    fun `an m4b passage keeps every chapter on media item zero`() {
+        val result = noteAnchorAt(m4bTimeline(), absoluteMs = 570_000, chapterTitles = titles)
+
+        assertEquals(PlayerTarget(0, 570_000), result.target)
+        assertEquals("Chapter 3", result.chapterTitle)
+    }
+
+    @Test
+    fun `a passage from a book whose chapter rows have not loaded still anchors`() {
+        val result = noteAnchorAt(folderTimeline(), absoluteMs = 305_000, chapterTitles = emptyList())
+
+        assertEquals(PlayerTarget(2, 5_000), result.target)
+        assertEquals("", result.chapterTitle)
+    }
+
+    /**
+     * The non-read-along path for a selected passage: there is no map to convert the text position,
+     * so the anchor is where playback is stopped — but still without the lead-in, for the same
+     * reason. Guards the defaulted parameter against being ignored.
+     */
+    @Test
+    fun `an explicit zero lead-in anchors exactly at the given position`() {
+        val result = noteAnchorFor(
+            folderTimeline(),
+            Location(chapterIndex = 3, offsetMs = 120_000),
+            titles,
+            leadInMs = 0,
+        )
+
+        assertEquals(PlayerTarget(3, 120_000), result.target)
+        assertEquals("Chapter 3", result.chapterTitle)
+    }
 }
