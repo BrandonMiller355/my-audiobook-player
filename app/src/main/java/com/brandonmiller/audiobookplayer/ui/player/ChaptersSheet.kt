@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.brandonmiller.audiobookplayer.R
 import com.brandonmiller.audiobookplayer.ui.CollapseIcon
 import com.brandonmiller.audiobookplayer.ui.IconTooltip
+import com.brandonmiller.audiobookplayer.ui.SummaryIcon
 import com.brandonmiller.audiobookplayer.ui.formatChapterLength
 import com.brandonmiller.audiobookplayer.ui.formatSpeed
 import com.brandonmiller.audiobookplayer.ui.theme.AudiobookType
@@ -67,6 +68,8 @@ internal fun ChaptersSheet(
     onPlayPause: () -> Unit,
     onSpeedSelected: (Float) -> Unit,
     onChapterSelected: (PlayerChapter) -> Unit,
+    onImportSummaries: () -> Unit,
+    onSummarySelected: (PlayerChapter) -> Unit,
 ) {
     val colors = audiobookColors
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -111,13 +114,23 @@ internal fun ChaptersSheet(
                 onSpeedSelected = onSpeedSelected,
             )
 
+            SummariesRow(
+                matchedCount = state.summaries.size,
+                chapterCount = state.chapterCount,
+                errorText = state.summaryImportError,
+                onImport = onImportSummaries,
+            )
+
             LazyColumn(state = listState, modifier = Modifier.fillMaxWidth()) {
                 items(state.chapters, key = { it.number }) { chapter ->
                     ChapterRow(
                         chapter = chapter,
                         isCurrent = chapter.number == state.chapterNumber,
                         remainingMs = state.chapterRemainingMs,
+                        // A row's number is its index plus one; the summaries are keyed by index.
+                        hasSummary = state.summaries.containsKey(chapter.number - 1),
                         onClick = { onChapterSelected(chapter) },
+                        onSummaryClick = { onSummarySelected(chapter) },
                     )
                 }
             }
@@ -260,6 +273,89 @@ private fun SpeedChip(stop: Float, selected: Boolean, onClick: () -> Unit) {
 }
 
 /**
+ * What the book carries, and the one control that changes it (`add-chapter-summaries` design D8).
+ *
+ * The count is the import's report. A message saying "42 of 90 matched" is gone in four seconds, and
+ * that figure is exactly what is wanted when checking whether a file was numbered the way the audio
+ * is — so it lives here, where it is still true tomorrow.
+ *
+ * A text button rather than an icon: this is pressed rarely, and "import a file of summaries" is not
+ * a thing a glyph can say.
+ *
+ * [errorText] is why an import came to nothing, and it is stated here rather than in a snackbar
+ * because a snackbar is not visible from here at all: this sheet is a `ModalBottomSheet` and renders
+ * above the `Scaffold` that hosts one. Device testing caught that; it had been failing silently.
+ */
+@Composable
+private fun SummariesRow(
+    matchedCount: Int,
+    chapterCount: Int,
+    errorText: String?,
+    onImport: () -> Unit,
+) {
+    val colors = audiobookColors
+
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 22.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.summaries_heading),
+                    style = AudiobookType.bodyLarge,
+                    color = colors.inkMuted,
+                )
+                Text(
+                    text = if (matchedCount == 0) {
+                        stringResource(R.string.summaries_none)
+                    } else {
+                        stringResource(R.string.summaries_count, matchedCount, chapterCount)
+                    }.uppercase(Locale.getDefault()),
+                    style = AudiobookType.monoMeta,
+                    color = colors.textTertiary,
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(colors.fillOnRaised)
+                    .clickable(onClick = onImport)
+                    .padding(horizontal = 15.dp, vertical = 11.dp),
+            ) {
+                Text(
+                    text = stringResource(
+                        if (matchedCount == 0) R.string.summaries_import else R.string.summaries_replace,
+                    ),
+                    style = AudiobookType.monoChip,
+                    color = colors.inkMuted,
+                )
+            }
+        }
+
+        // Below the row rather than inside it, so a sentence can wrap to the sheet's full width
+        // instead of being squeezed beside the button that produced it.
+        if (errorText != null) {
+            Text(
+                text = errorText,
+                style = AudiobookType.bodyLarge,
+                color = colors.error,
+                modifier = Modifier.padding(start = 22.dp, end = 22.dp, bottom = 14.dp),
+            )
+        }
+
+        Hairline()
+    }
+}
+
+/**
  * The current chapter's row inverts and bleeds to both edges, and swaps its total length for the
  * time left in it — on the one row where "how long is this chapter" is the less useful of the two.
  */
@@ -268,7 +364,9 @@ private fun ChapterRow(
     chapter: PlayerChapter,
     isCurrent: Boolean,
     remainingMs: Long?,
+    hasSummary: Boolean,
     onClick: () -> Unit,
+    onSummaryClick: () -> Unit,
 ) {
     val colors = audiobookColors
     val trailingMs = if (isCurrent) remainingMs ?: chapter.durationMs else chapter.durationMs
@@ -278,7 +376,8 @@ private fun ChapterRow(
             .fillMaxWidth()
             .background(if (isCurrent) colors.ink else colors.surfaceRaised)
             .clickable(onClick = onClick)
-            .padding(horizontal = 22.dp, vertical = if (isCurrent) 18.dp else 16.dp),
+            .padding(start = 22.dp, end = if (hasSummary) 8.dp else 22.dp)
+            .padding(vertical = if (isCurrent) 18.dp else 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -304,6 +403,29 @@ private fun ChapterRow(
             style = AudiobookType.monoMeta,
             color = if (isCurrent) colors.onInkMuted else colors.textQuaternary,
         )
+
+        // Its own clickable, inside the row's: a tap here opens the summary and must not select the
+        // chapter, which would move playback (`add-chapter-summaries` design D8). Absent rather than
+        // disabled on a chapter with no summary — there is nothing to explain.
+        if (hasSummary) {
+            val label = stringResource(R.string.summaries_open)
+            IconTooltip(label) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(22.dp))
+                        .clickable(onClick = onSummaryClick),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    SummaryIcon(
+                        size = 20.dp,
+                        // The current row is inverted, so its content has to invert with it.
+                        color = if (isCurrent) colors.onInk else colors.inkMuted,
+                        contentDescription = label,
+                    )
+                }
+            }
+        }
     }
 }
 

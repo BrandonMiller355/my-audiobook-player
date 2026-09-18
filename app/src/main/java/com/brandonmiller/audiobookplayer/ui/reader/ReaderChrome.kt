@@ -66,6 +66,7 @@ import com.brandonmiller.audiobookplayer.ui.OverflowIcon
 import com.brandonmiller.audiobookplayer.ui.PauseIcon
 import com.brandonmiller.audiobookplayer.ui.PlayIcon
 import com.brandonmiller.audiobookplayer.ui.SearchIcon
+import com.brandonmiller.audiobookplayer.ui.SummaryIcon
 
 /**
  * The revealed controls: flip back, play/pause, and a menu holding everything else.
@@ -297,8 +298,15 @@ fun ReaderTextButton(label: String, onClick: () -> Unit) {
 fun ContentsSheet(
     entries: List<NavEntry>,
     currentBlockIndex: Int,
+    /**
+     * Which entries carry an imported summary, by `blockIndex` (`add-chapter-summaries` design D10).
+     * Empty for a book with no summaries and for one whose chapters cannot be paired with its
+     * entries, and in both cases the sheet is exactly what it was before this change.
+     */
+    summaryBlockIndices: Set<Int>,
     onDismiss: () -> Unit,
     onSelect: (NavEntry) -> Unit,
+    onSummary: (NavEntry) -> Unit,
 ) {
     val listState = rememberLazyListState()
     val currentIndex = remember(entries, currentBlockIndex) { entries.entryIndexAt(currentBlockIndex) }
@@ -337,29 +345,56 @@ fun ContentsSheet(
         LazyColumn(state = listState, modifier = Modifier.heightIn(max = 520.dp)) {
             itemsIndexed(entries) { index, entry ->
                 val isCurrent = index == currentIndex
-                Text(
-                    text = entry.label,
-                    // A nested entry is dimmed to keep it under its part, but not while it is the
-                    // one being read — dim and bold at once reads as a rendering mistake.
-                    color = if (isCurrent || entry.depth == 0) ReaderChromeInk else ReaderChromeInkDim,
-                    fontSize = if (entry.depth == 0) 16.sp else 15.sp,
-                    fontWeight = when {
-                        isCurrent -> FontWeight.Bold
-                        entry.depth == 0 -> FontWeight.Medium
-                        else -> FontWeight.Normal
-                    },
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onSelect(entry) }
-                        .padding(
-                            start = 24.dp + (entry.depth * 16).dp,
-                            end = 24.dp,
-                            top = 12.dp,
-                            bottom = 12.dp,
-                        ),
-                )
+                val hasSummary = entry.blockIndex in summaryBlockIndices
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable { onSelect(entry) },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = entry.label,
+                        // A nested entry is dimmed to keep it under its part, but not while it is
+                        // the one being read — dim and bold at once reads as a rendering mistake.
+                        color = if (isCurrent || entry.depth == 0) ReaderChromeInk else ReaderChromeInkDim,
+                        fontSize = if (entry.depth == 0) 16.sp else 15.sp,
+                        fontWeight = when {
+                            isCurrent -> FontWeight.Bold
+                            entry.depth == 0 -> FontWeight.Medium
+                            else -> FontWeight.Normal
+                        },
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(
+                                start = 24.dp + (entry.depth * 16).dp,
+                                end = if (hasSummary) 8.dp else 24.dp,
+                                top = 12.dp,
+                                bottom = 12.dp,
+                            ),
+                    )
+
+                    // Its own clickable inside the row's, so opening a summary does not also jump
+                    // the reader — and, through the read-along seek, the audio with it.
+                    if (hasSummary) {
+                        val label = stringResource(R.string.summaries_open)
+                        IconTooltip(label) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(end = 12.dp)
+                                    .size(44.dp)
+                                    .clickable { onSummary(entry) },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                SummaryIcon(
+                                    size = 20.dp,
+                                    color = ReaderChromeInkDim,
+                                    contentDescription = label,
+                                )
+                            }
+                        }
+                    }
+                }
             }
             item { Spacer(Modifier.height(24.dp)) }
         }

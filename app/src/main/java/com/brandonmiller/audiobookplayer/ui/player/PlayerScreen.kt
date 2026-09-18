@@ -33,8 +33,10 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -85,6 +87,7 @@ import com.brandonmiller.audiobookplayer.ui.IconTooltip
 import com.brandonmiller.audiobookplayer.ui.PLAYER_COVER_MAX_HEIGHT_FRACTION
 import com.brandonmiller.audiobookplayer.ui.PauseIcon
 import com.brandonmiller.audiobookplayer.ui.PlayIcon
+import com.brandonmiller.audiobookplayer.ui.SummarySheet
 import com.brandonmiller.audiobookplayer.ui.formatSpeed
 import com.brandonmiller.audiobookplayer.ui.formatTime
 import com.brandonmiller.audiobookplayer.ui.theme.AudiobookType
@@ -125,6 +128,13 @@ fun PlayerScreen(
         uri?.let(viewModel::linkEbook)
     }
 
+    // Plain OpenDocument, not OpenPersistableDocument: that subclass exists only to ask for a
+    // persistable grant, and a summary file is read once and finished with (add-chapter-summaries
+    // design D1). The transient grant this returns outlives the read, which is all it has to do.
+    val pickSummaries = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let(viewModel::importSummaries)
+    }
+
     // Picking an ebook goes straight on into reading it, rather than returning the user to the
     // cover to press the same icon a second time.
     LaunchedEffect(state.openReaderRequested) {
@@ -137,6 +147,12 @@ fun PlayerScreen(
     // Local, not ViewModel state: it has no meaning outside the sheet's own lifetime, and putting
     // it on the ViewModel would make the ViewModel responsible for a scroll position (design D7).
     var openSection by remember { mutableStateOf<SheetSection?>(null) }
+
+    // Which summary is on screen, for the same reason: it is a thing being looked at, not a thing
+    // the book knows about. Carries its own text rather than a chapter to look one up from, because
+    // the two ways to open it — a chapter row and the end-of-chapter offer — start from different
+    // things and agree on nothing else.
+    var openSummary by remember { mutableStateOf<OpenSummary?>(null) }
 
     // Asked once, at the moment the user first presses play — never at launch, so the app-shell
     // promise of no permission dialog on first launch still holds.
@@ -152,6 +168,26 @@ fun PlayerScreen(
         state.errorMessage?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.consumeError()
+        }
+    }
+
+    // The end-of-chapter offer (`add-chapter-summaries` design D7). A snackbar with an action and
+    // nothing else: it times out on its own, and neither showing it, taking it, nor ignoring it
+    // touches playback. The audio runs on into the next chapter throughout.
+    val promptLabel = stringResource(R.string.summaries_prompt_action)
+    LaunchedEffect(state.summaryPrompt) {
+        val prompt = state.summaryPrompt ?: return@LaunchedEffect
+        // Consumed *after* the snackbar resolves, as the error effect above does. Clearing it first
+        // changes this effect's key, which cancels the coroutine that was about to do the showing --
+        // the offer then never appears, while everything behind it looks like it worked.
+        val result = snackbarHostState.showSnackbar(
+            message = context.getString(R.string.summaries_prompt, prompt.chapterTitle),
+            actionLabel = promptLabel,
+            duration = SnackbarDuration.Short,
+        )
+        viewModel.consumeSummaryPrompt()
+        if (result == SnackbarResult.ActionPerformed) {
+            openSummary = OpenSummary(prompt.chapterTitle, state.summaries[prompt.chapterIndex].orEmpty())
         }
     }
 
@@ -282,9 +318,41 @@ fun PlayerScreen(
                 viewModel.seekToAbsolute(chapter.startMs)
                 openSection = null
             },
+            onImportSummaries = { pickSummaries.launch(SUMMARY_MIME_TYPES) },
+            onSummarySelected = { chapter ->
+                // A row's number is its index plus one; the summaries are keyed by index.
+                openSummary = OpenSummary(chapter.title, state.summaries[chapter.number - 1].orEmpty())
+            },
+        )
+    }
+
+    // Outside the sheet's `if`, so a summary opened from the chapter list survives that sheet
+    // closing, and so the same composable serves the end-of-chapter offer, which has no sheet
+    // beneath it at all (design D9).
+    openSummary?.let { summary ->
+        SummarySheet(
+            chapterTitle = summary.chapterTitle,
+            text = summary.text,
+            onDismiss = { openSummary = null },
         )
     }
 }
+
+/** A summary on screen: what chapter it belongs to, and its text. */
+private data class OpenSummary(val chapterTitle: String, val text: String)
+
+/**
+ * What the picker will offer.
+ *
+ * `text/markdown` is what Android reports for a `.md` file — checked against the device's own
+ * `MediaStore` rather than assumed, because the picker filters on the provider's type and a guess
+ * that is wrong hides the file with no way for the owner to tell why. `text/x-markdown` is the older
+ * spelling, carried for providers that still use it.
+ *
+ * Named types rather than a text wildcard: the wildcard would put every subtitle, log, and CSV on
+ * the device in front of someone looking for one summary file.
+ */
+private val SUMMARY_MIME_TYPES = arrayOf("text/plain", "text/markdown", "text/x-markdown")
 
 /**
  * Light status-bar icons for as long as the Player is shown, in both themes.

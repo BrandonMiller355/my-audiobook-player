@@ -187,6 +187,48 @@ data class ReadAlongCorrectionEntity(
     val charOffset: Int,
 )
 
+/**
+ * One imported summary, for one chapter of one book (`add-chapter-summaries` design D2).
+ *
+ * Keyed on the *audio* [chapterIndex], as [ChapterEntity], [NoteEntity], and
+ * [ReadAlongCorrectionEntity] are. A book's chapters are written once when it is added and never
+ * renumbered in place — `LibraryDao` has `insertBookWithChapters` and `deleteBook`, and no path
+ * between them that rewrites a chapter row — so the index is stable for as long as the summary is.
+ *
+ * [NoteEntity] denormalizes the chapter's title and this deliberately does not. A note is shown in a
+ * list of its own, away from the book's chapters, where a stale index would relabel it silently and
+ * plausibly. A summary is only ever shown from a chapter row, next to that chapter's own title, so a
+ * second copy of the title would buy nothing and create a way for the two to disagree on screen.
+ *
+ * [prompted] lives here rather than in a table of its own because a chapter with no summary has
+ * nothing to be prompted about. It is cleared by a re-import along with everything else (design D5),
+ * which is harmless: the prompt fires on a forward crossing under playback, and a chapter already
+ * listened through is not crossed again.
+ */
+@Entity(
+    tableName = "chapter_summaries",
+    primaryKeys = ["audiobookId", "chapterIndex"],
+    foreignKeys = [
+        ForeignKey(
+            entity = AudiobookEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["audiobookId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("audiobookId")],
+)
+data class ChapterSummaryEntity(
+    val audiobookId: Long,
+    val chapterIndex: Int,
+    /** The summary itself, as it was written in the imported file. Never empty — a blank entry is
+     * dropped at parse time rather than stored, since it would put a control on a row that opens
+     * nothing. */
+    val text: String,
+    /** Whether the end-of-chapter offer has already been made for this chapter (design D6). */
+    val prompted: Boolean = false,
+)
+
 /** A library row: the book plus the derived figures the list and the resume card show. */
 data class LibraryBook(
     val id: Long,

@@ -100,6 +100,24 @@
     <string name="player_sheet_collapse">Close chapters</string>
     <string name="player_sheet_speed">Playback speed %1$s</string>
 
+    <!-- Chapter summaries. A successful import reports itself through summaries_count on the sheet
+         rather than through a message that disappears — see add-chapter-summaries design D8. -->
+    <string name="summaries_heading">Chapter summaries</string>
+    <string name="summaries_count">%1$d of %2$d chapters</string>
+    <string name="summaries_none">None imported</string>
+    <string name="summaries_import">Import</string>
+    <string name="summaries_replace">Replace</string>
+    <string name="summaries_open">Read the chapter summary</string>
+    <string name="summaries_close">Close summary</string>
+
+    <string name="summaries_unreadable">That file could not be read.</string>
+    <string name="summaries_no_entries">No chapter summaries were found in that file. Each one needs to start with a line reading just \"Chapter 1\" or \"Prologue\".</string>
+    <string name="summaries_no_match">None of the %1$d summaries in that file match this book\'s chapters.</string>
+    <string name="summaries_no_chapters">This book has no chapter marks, so there is nothing to match summaries to.</string>
+
+    <string name="summaries_prompt">Finished %1$s. Read the summary?</string>
+    <string name="summaries_prompt_action">Read</string>
+
     <!-- Ebook companion. The icon on the cover carries two different actions, so it carries two
          different descriptions — see add-ebook-companion design D15. -->
     <string name="ebook_link">Link an ebook</string>

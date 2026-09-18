@@ -97,7 +97,23 @@ data class ReaderUiState(
      * The room runs out near a chapter boundary, where there is little text left to redistribute.
      */
     val correctionAtLimit: Boolean = false,
+    /**
+     * The summary each table-of-contents entry carries, by `blockIndex` (`add-chapter-summaries`
+     * design D10). Empty for a book with no summaries and for one whose chapters cannot be paired
+     * with its entries — in both cases the contents sheet is what it was before this change.
+     */
+    val summariesByBlock: Map<Int, ChapterSummary> = emptyMap(),
 )
+
+/**
+ * A summary and what to call the chapter it belongs to.
+ *
+ * The title is the *audio* chapter's, not the table-of-contents entry's, so that a summary is headed
+ * the same way wherever it was opened from. This ebook's nav labels are bare ordinals — an entry
+ * reading "3" would head the sheet "3", while the same summary reached from the Player's chapter
+ * list would head it "Chapter 3".
+ */
+data class ChapterSummary(val chapterTitle: String, val text: String)
 
 class ReaderViewModel(
     private val appContext: Context,
@@ -138,6 +154,19 @@ class ReaderViewModel(
 
     /** Which chapter the pending write is for, so a burst that crosses a boundary cannot strand it. */
     private var pendingCommitChapter: Int? = null
+
+    /**
+     * The two halves of what the contents sheet's summary controls need, kept apart because they
+     * arrive at different times and from different places (`add-chapter-summaries` design D10).
+     *
+     * The pairing is settled once, when the read-along map is built; the summaries are observed and
+     * change under an import. [publishSummaries] joins them whenever either moves.
+     */
+    private var summaryChapterByBlock: Map<Int, Int> = emptyMap()
+    private var summariesByChapter: Map<Int, String> = emptyMap()
+
+    /** The audio chapters' own titles, for heading a summary the way the Player's list would. */
+    private var chapterTitles: Map<Int, String> = emptyMap()
 
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -206,6 +235,7 @@ class ReaderViewModel(
     init {
         load()
         observeSettings()
+        observeSummaries()
         connect()
     }
 
@@ -292,17 +322,74 @@ class ReaderViewModel(
 
         val titles = withContext(Dispatchers.IO) { dao.chaptersFor(bookId) }
             .associate { it.chapterIndex to it.title }
+        chapterTitles = titles
 
         val anchors = matchChapters(audioChaptersFrom(spans, titles), ebook, manualOffset = chapterOffset)
         if (anchors.isEmpty()) return null
 
         baseAnchors = anchors
         baseMap = ReadAlongMap(anchors)
+        summaryChapterByBlock = pairEntriesToChapters(ebook, anchors)
+        publishSummaries()
         corrections = withContext(Dispatchers.IO) { dao.readAlongCorrections(bookId) }
             .associate { it.chapterIndex to ReadAlongCorrection(it.audioMs, it.charOffset) }
             .toMutableMap()
 
         return ReadAlongMap(anchorsWithCorrections(anchors, corrections.values.toList()))
+    }
+
+    /**
+     * Which audio chapter each table-of-contents entry is, by `blockIndex` (`add-chapter-summaries`
+     * design D10, revised).
+     *
+     * The design proposed inverting `matchChapters`'s result, which turns out not to be possible:
+     * it returns anchors — `(absoluteMs, absoluteChars)` pairs — and discards which entry paired with
+     * which chapter on the way out. The anchors are enough anyway, because of what they *are*: every
+     * one is a matched chapter's start on both sides at once. Looking each anchor's `absoluteChars`
+     * up against the entries recovers the pairing exactly, with no interpolation and no second
+     * matching strategy.
+     *
+     * Using [baseAnchors] rather than the corrected map matters. An owner's read-along correction
+     * adds an anchor mid-chapter (`add-readalong-nudge` design D1), and that anchor is not a chapter
+     * start; matching against it would put a summary control on whatever entry happened to sit near
+     * where the owner last nudged.
+     *
+     * An entry that matched no chapter is simply absent, which is what leaves front matter, part
+     * headings, and sub-sections without a control.
+     */
+    /**
+     * Observed, so a summary imported from the Player reaches a reader already sitting on the back
+     * stack above it — the same reason [observeEbookLink] exists on the Player for the reverse trip.
+     */
+    private fun observeSummaries() {
+        viewModelScope.launch {
+            dao.observeChapterSummaries(bookId).collect { rows ->
+                summariesByChapter = rows.associate { it.chapterIndex to it.text }
+                publishSummaries()
+            }
+        }
+    }
+
+    /** Joins the entry-to-chapter pairing with the summaries themselves; either may arrive first. */
+    private fun publishSummaries() {
+        val byBlock = summaryChapterByBlock.mapNotNull { (blockIndex, chapterIndex) ->
+            summariesByChapter[chapterIndex]?.let { summary ->
+                blockIndex to ChapterSummary(chapterTitles[chapterIndex].orEmpty(), summary)
+            }
+        }.toMap()
+        _state.update { it.copy(summariesByBlock = byBlock) }
+    }
+
+    private fun pairEntriesToChapters(ebook: Ebook, anchors: List<ReadAlongAnchor>): Map<Int, Int> {
+        if (anchors.isEmpty()) return emptyMap()
+
+        val chapterByChars = anchors.mapNotNull { anchor ->
+            chapterIndexAt(anchor.absoluteMs)?.let { anchor.absoluteChars to it }
+        }.toMap()
+
+        return ebook.contents.mapNotNull { entry ->
+            chapterByChars[ebook.absoluteCharsAt(entry.blockIndex)]?.let { entry.blockIndex to it }
+        }.toMap()
     }
 
     /** Rebuilds the corrected map from the anchors already matched, without re-reading the book. */

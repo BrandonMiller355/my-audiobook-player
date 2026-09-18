@@ -265,6 +265,43 @@ fun OverflowIcon(size: Dp, color: Color, contentDescription: String?, modifier: 
 }
 
 /**
+ * A card of text — a rounded frame with two ragged lines inside it (`add-chapter-summaries`
+ * design D11).
+ *
+ * It has to be told apart at row size from two glyphs already in this file, and the frame is what
+ * does it: [DocumentIcon] is a page outline with a turned corner and nothing written on it, and
+ * [ContentsIcon] is numbered lines with no outline at all. A page *with* lines would have read as
+ * [DocumentIcon] with noise in it, which is why the frame is a rounded rectangle rather than a page.
+ *
+ * Two lines rather than three: at the 2-unit stroke this set uses, a third leaves under two units of
+ * daylight between strokes and the whole inside closes up into a solid block. They stop short of the
+ * right edge by differing amounts, for the reason [ContentsIcon]'s do — an even right edge reads as a
+ * barcode rather than as prose.
+ */
+@Composable
+fun SummaryIcon(size: Dp, color: Color, contentDescription: String?, modifier: Modifier = Modifier) {
+    IconCanvas(size, contentDescription, modifier) { unit, stroke ->
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(3.5f * unit, 4f * unit),
+            size = Size(17f * unit, 16f * unit),
+            cornerRadius = CornerRadius(3f * unit, 3f * unit),
+            style = stroke,
+        )
+        // Inset from the frame by a clear unit and a half so the strokes do not crowd it.
+        for ((y, lineEnd) in listOf(9.5f to 16.5f, 15f to 14.5f)) {
+            drawLine(
+                color,
+                Offset(7f * unit, y * unit),
+                Offset(lineEnd * unit, y * unit),
+                stroke.width,
+                StrokeCap.Round,
+            )
+        }
+    }
+}
+
+/**
  * One of `1`, `2`, `3`, centered on ([cx], [cy]).
  *
  * Described around its own center at a nominal 5.6-unit height, then scaled to [NUMERAL_HEIGHT], so

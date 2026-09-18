@@ -87,7 +87,12 @@ private fun tocChapterCandidates(ebook: Ebook): List<TocCandidate> {
 
 // ------------------------------------------------------------------ label normalization
 
-private val NAMED_SECTIONS = setOf("prologue", "epilogue", "prelude", "interlude", "appendix")
+/**
+ * Sections that name themselves rather than carrying a number. Internal rather than private because
+ * the summary-file parser gates on the same set (`add-chapter-summaries` design D3) — two copies of
+ * this list would drift, and the failure would be a section matching on one side and not the other.
+ */
+internal val NAMED_SECTIONS = setOf("prologue", "epilogue", "prelude", "interlude", "appendix")
 
 private val SPELLED_OUT_NUMBERS = mapOf(
     "zero" to 0, "one" to 1, "two" to 2, "three" to 3, "four" to 4, "five" to 5, "six" to 6,
