@@ -162,6 +162,68 @@ Out of scope, and not to be built without a further explicit request:
 
 ---
 
+## 3.3 Chapter summaries — what is in and what is not
+
+Chapter summaries were explicitly requested later, which is the exception §3 allows for. The request
+originally described an AI-generated analysis played aloud at each chapter's end;
+`handoffs/2026-08-10-ai-chapter-analysis.md` explored that and
+`openspec/specs/chapter-summaries/` specifies what was actually built, which is smaller and quieter.
+
+**Nothing here generates or speaks anything.** The summaries are written outside the app, by whatever
+the owner likes, and imported as one plain-text file per book. No model runs on the device, no text is
+synthesized, and §24 is untouched — there is still no INTERNET permission and no reason for one.
+
+In scope, and built:
+
+- Importing one plain-text or Markdown file of summaries for a book. Entries are separated by a
+  marker line that is, on its own, a chapter reference — `Chapter 12`, `Chapter XII`, `Prologue`,
+  optionally followed by a separator and a chapter title — or by a Markdown heading naming one,
+  `## Prologue` or `### Chapter 1`. Text before the first marker is discarded, as is a heading that
+  names no chapter, such as the document's title or a "Part One" above the chapters under it.
+- Rendering Markdown's inline emphasis in a summary rather than showing the marks that expressed it.
+- Matching those entries to chapters by what each label **denotes** rather than by position, so a
+  file numbered from one still lands correctly on audio that counts a prologue first. What matches
+  nothing is reported as a count, never guessed at.
+- **Storing the text rather than the file.** This is the one place the app keeps a copy of something
+  it was given, and it does not contradict §16. That section is about audiobook files: they are
+  multi-gigabyte, they are the library itself, and a player streams from them, so they are referenced
+  and never copied. A summary file is a few kilobytes fully consumed at import. Referencing it would
+  mean re-parsing on every open of the chapter list and losing every summary the first time the owner
+  tidied a folder on the desktop. No audio file and no EPUB is copied by any of this.
+- A brief offer, at the end of a chapter the owner listened through, to read that chapter's summary.
+  It never pauses, seeks, or otherwise touches playback, it dismisses itself, and it is made at most
+  once per chapter. Only the narration crossing the boundary makes it — seeking, scrubbing,
+  chapter-skipping, and resuming do not.
+- A control on every chapter that has a summary, in the player's chapter list and in the reader's
+  table of contents, opening it at any time.
+
+Out of scope, and not to be built without a further explicit request:
+
+- **Generating summaries in the app**, by any on-device or networked model.
+- **Speaking a summary aloud** — text-to-speech, or pre-rendered summary audio played as part of the
+  book. The 2026-08-10 handoff concluded that a summary should be a queued media item rather than a
+  speech overlay if it is ever made audible; nothing built here forecloses that, and nothing built
+  here works toward it.
+- **A resume recap** on returning after a gap, and an **end-of-book wrap-up**. Both are natural
+  neighbors and both are separate changes.
+- **Anything interactive** — asking questions about a chapter, in any modality. That version needs a
+  microphone permission, a network connection, and listening history leaving the device, and is a
+  materially different app in privacy terms.
+- **Summary markers on the progress scrubber**, for the reason §3.2 keeps note markers off it.
+- **Spoiler gating.** Every chapter that has a summary opens it, whether or not the owner has reached
+  it. This was the owner's explicit choice.
+- **Editing a summary in the app.** The file is the source of truth; correcting one means editing the
+  file and importing it again, which replaces the book's summaries wholesale.
+- **Any other file format** — no JSON, no folder of per-chapter files. Markdown is accepted as text
+  with headings, not parsed as a document: no tables, lists, links, or images.
+- **Settings for the offer**, per book or globally. It costs nothing to ignore, and §20 requires no
+  settings screen.
+
+A book whose audio carries no chapter marks supports none of this, and the import says so rather than
+matching something. The owner's library contains both kinds.
+
+---
+
 ## 4. Target Platform
 
 - Android only

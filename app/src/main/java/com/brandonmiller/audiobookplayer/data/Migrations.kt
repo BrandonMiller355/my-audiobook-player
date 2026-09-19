@@ -188,3 +188,42 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
         )
     }
 }
+
+/**
+ * Adds the `chapter_summaries` table (`add-chapter-summaries` design D2).
+ *
+ * Additive, in the shape of [MIGRATION_7_8]: nothing existing is altered, so every current row is
+ * untouched and a library with no summaries behaves exactly as it did at version 8 — no chapter row
+ * carries a control, and nothing is ever offered at a chapter's end.
+ *
+ * The composite primary key is what makes design D5's replace-don't-merge cheap: an import deletes
+ * the book's rows and writes the new set, and a file with two entries for the same chapter collides
+ * rather than accumulating a second summary the UI would have to choose between.
+ *
+ * As on [MIGRATION_7_8], the DDL is written out by hand and has to match what Room generates from
+ * [ChapterSummaryEntity] exactly: column order, affinities, nullability, the primary key clause, the
+ * foreign key clause, and the index name. A mismatch still migrates and still stores rows, then fails
+ * Room's schema validation the next time the app opens the database. `Migration8To9Test` pins both
+ * statements to the committed version 9 export rather than trusting this comment.
+ */
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `chapter_summaries` (
+                `audiobookId` INTEGER NOT NULL,
+                `chapterIndex` INTEGER NOT NULL,
+                `text` TEXT NOT NULL,
+                `prompted` INTEGER NOT NULL,
+                PRIMARY KEY(`audiobookId`, `chapterIndex`),
+                FOREIGN KEY(`audiobookId`) REFERENCES `audiobooks`(`id`)
+                    ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_chapter_summaries_audiobookId` " +
+                "ON `chapter_summaries` (`audiobookId`)",
+        )
+    }
+}

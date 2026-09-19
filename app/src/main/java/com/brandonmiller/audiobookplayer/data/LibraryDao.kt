@@ -220,4 +220,57 @@ interface LibraryDao {
 
     @Query("DELETE FROM notes WHERE id = :noteId")
     suspend fun deleteNote(noteId: Long)
+
+    // ---------------------------------------------------------------- chapter summaries
+
+    /**
+     * One book's summaries, in chapter order (`add-chapter-summaries` design D2).
+     *
+     * Observed rather than read once, unlike the read-along corrections above: an import replaces the
+     * whole set while the chapter sheet that triggered it is still open, and the controls on its rows
+     * have to appear without the sheet being dismissed and reopened.
+     */
+    @Query("SELECT * FROM chapter_summaries WHERE audiobookId = :audiobookId ORDER BY chapterIndex ASC")
+    fun observeChapterSummaries(audiobookId: Long): Flow<List<ChapterSummaryEntity>>
+
+    @Query("SELECT * FROM chapter_summaries WHERE audiobookId = :audiobookId ORDER BY chapterIndex ASC")
+    suspend fun chapterSummaries(audiobookId: Long): List<ChapterSummaryEntity>
+
+    /**
+     * One chapter's summary, or null when it has none. Read at a chapter boundary to decide whether
+     * there is anything to offer, which is why it fetches the row rather than reading the observed
+     * list: the observed list carries the text but not [ChapterSummaryEntity.prompted].
+     */
+    @Query("SELECT * FROM chapter_summaries WHERE audiobookId = :audiobookId AND chapterIndex = :chapterIndex")
+    suspend fun chapterSummary(audiobookId: Long, chapterIndex: Int): ChapterSummaryEntity?
+
+    @Query("DELETE FROM chapter_summaries WHERE audiobookId = :audiobookId")
+    suspend fun clearChapterSummaries(audiobookId: Long)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertChapterSummaries(summaries: List<ChapterSummaryEntity>)
+
+    /**
+     * Marks a chapter as having had its end-of-chapter offer made (design D6).
+     *
+     * Deliberately not an upsert of the whole row: the only thing that legitimately changes here is
+     * the flag, and writing the row back would let a stale copy of [ChapterSummaryEntity.text] held
+     * by the Player overwrite a summary a re-import had replaced in between.
+     */
+    @Query("UPDATE chapter_summaries SET prompted = 1 WHERE audiobookId = :audiobookId AND chapterIndex = :chapterIndex")
+    suspend fun markChapterSummaryPrompted(audiobookId: Long, chapterIndex: Int)
+
+    /**
+     * Replaces every summary a book carries with the imported set, in one transaction (design D5).
+     *
+     * Replace rather than merge, because editing the file and importing it again is the only editing
+     * path this feature has: an entry the owner deleted from the file has to disappear from the book
+     * rather than survive from the previous import. The delete and the insert are one transaction so
+     * that a failure partway cannot leave a book with neither its old summaries nor its new ones.
+     */
+    @Transaction
+    suspend fun replaceChapterSummaries(audiobookId: Long, summaries: List<ChapterSummaryEntity>) {
+        clearChapterSummaries(audiobookId)
+        insertChapterSummaries(summaries)
+    }
 }

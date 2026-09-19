@@ -68,7 +68,9 @@ import com.brandonmiller.audiobookplayer.data.ReadingSettings
 import com.brandonmiller.audiobookplayer.ebook.Block
 import com.brandonmiller.audiobookplayer.ebook.BlockKind
 import com.brandonmiller.audiobookplayer.ebook.Emphasis
+import com.brandonmiller.audiobookplayer.ebook.NavEntry
 import com.brandonmiller.audiobookplayer.ebook.TextPosition
+import com.brandonmiller.audiobookplayer.ui.SummarySheet
 import com.brandonmiller.audiobookplayer.ui.library.OpenPersistableDocument
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
@@ -135,6 +137,9 @@ fun ReaderScreen(
     var brightnessOpen by remember { mutableStateOf(false) }
     var syncOpen by remember { mutableStateOf(false) }
     var contentsOpen by remember { mutableStateOf(false) }
+    // Which entry's summary is on screen. Outlives the contents sheet, so dismissing one does not
+    // take the other with it.
+    var openSummary by remember { mutableStateOf<NavEntry?>(null) }
     // Sampled when the sheet opens rather than read during composition: `layoutInfo` is snapshot
     // state, and observing it here would recompose the whole reader on every frame of every scroll.
     var contentsAnchorBlock by remember { mutableStateOf(0) }
@@ -402,12 +407,28 @@ fun ReaderScreen(
         ContentsSheet(
             entries = state.book?.contents.orEmpty(),
             currentBlockIndex = contentsAnchorBlock,
+            summaryBlockIndices = state.summariesByBlock.keys,
             onDismiss = { contentsOpen = false },
             onSelect = { entry ->
                 viewModel.jumpToBlock(entry.blockIndex)
                 contentsOpen = false
             },
+            // Deliberately does not dismiss the contents sheet or jump the reader: reading a
+            // summary is checking what a chapter was, not deciding to go there.
+            onSummary = { entry -> openSummary = entry },
         )
+    }
+
+    openSummary?.let { entry ->
+        state.summariesByBlock[entry.blockIndex]?.let { summary ->
+            SummarySheet(
+                // The audio chapter's title rather than the entry's own label: this ebook's nav
+                // entries are bare ordinals, and "3" is a poor thing to head a sheet with.
+                chapterTitle = summary.chapterTitle.ifBlank { entry.label },
+                text = summary.text,
+                onDismiss = { openSummary = null },
+            )
+        }
     }
 
     // The query and its hits outlive the sheet on purpose: reopening search after following one hit

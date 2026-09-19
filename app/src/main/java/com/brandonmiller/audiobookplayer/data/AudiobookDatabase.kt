@@ -11,8 +11,9 @@ import androidx.room.RoomDatabase
         ChapterEntity::class,
         NoteEntity::class,
         ReadAlongCorrectionEntity::class,
+        ChapterSummaryEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 abstract class AudiobookDatabase : RoomDatabase() {
@@ -44,6 +45,7 @@ abstract class AudiobookDatabase : RoomDatabase() {
                     MIGRATION_5_6,
                     MIGRATION_6_7,
                     MIGRATION_7_8,
+                    MIGRATION_8_9,
                 )
                     .build().also { instance = it }
             }

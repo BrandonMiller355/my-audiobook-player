@@ -18,6 +18,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.brandonmiller.audiobookplayer.data.AudiobookDatabase
 import com.brandonmiller.audiobookplayer.data.ChapterEntity
+import com.brandonmiller.audiobookplayer.data.ChapterSummaryEntity
 import com.brandonmiller.audiobookplayer.data.LibraryDao
 import com.brandonmiller.audiobookplayer.data.NoteEntity
 import com.brandonmiller.audiobookplayer.data.SOURCE_TYPE_M4B
@@ -27,12 +28,17 @@ import com.brandonmiller.audiobookplayer.ebook.EbookParseResult
 import com.brandonmiller.audiobookplayer.ebook.EbookSource
 import com.brandonmiller.audiobookplayer.ui.library.UriPermissionHolder
 import com.brandonmiller.audiobookplayer.playback.BookTimeline
+import com.brandonmiller.audiobookplayer.playback.PlaybackSample
 import com.brandonmiller.audiobookplayer.playback.PlaybackService
+import com.brandonmiller.audiobookplayer.playback.chapterFinishedBy
 import com.brandonmiller.audiobookplayer.playback.chapterTimeline
 import com.brandonmiller.audiobookplayer.playback.currentLocation
 import com.brandonmiller.audiobookplayer.playback.loadBook
 import com.brandonmiller.audiobookplayer.playback.noteAnchorFor
 import com.brandonmiller.audiobookplayer.playback.resolveChapterDurations
+import com.brandonmiller.audiobookplayer.summaries.matchSummaries
+import com.brandonmiller.audiobookplayer.summaries.parseSummaryFile
+import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -74,8 +80,31 @@ data class PlayerUiState(
     val noteCount: Int = 0,
     /** Set when a mark has just been taken, and cleared once its confirmation has been shown. */
     val markTaken: MarkTaken? = null,
+    /**
+     * This book's imported summaries, by chapter index (`add-chapter-summaries` design D2).
+     *
+     * The map is also the import's report: its size against [chapterCount] is the "42 of 90 chapters"
+     * the sheet states, so a successful import needs no message of its own and the figure survives
+     * the app being closed (design D8).
+     */
+    val summaries: Map<Int, String> = emptyMap(),
+    /** Set when playback has just carried the owner out of a chapter that has a summary (design D6). */
+    val summaryPrompt: SummaryPrompt? = null,
+    /**
+     * Why the last import came to nothing, shown in the chapter sheet's own summaries section rather
+     * than as a snackbar (design D8, revised).
+     *
+     * A snackbar cannot work here and device testing is what showed it: the only control that starts
+     * an import lives inside the chapter sheet, and a `ModalBottomSheet` renders above the
+     * `Scaffold` that hosts the snackbar — so the message was being displayed underneath the sheet
+     * that triggered it, every time. The report belongs next to the control either way.
+     */
+    val summaryImportError: String? = null,
     val errorMessage: String? = null,
 )
+
+/** The chapter an end-of-chapter offer is about: which one, and what to call it. */
+data class SummaryPrompt(val chapterIndex: Int, val chapterTitle: String)
 
 /**
  * A mark the user has just taken, carried only long enough to send the Player to it.
@@ -130,6 +159,13 @@ class PlayerViewModel(
      */
     private var chapters: List<ChapterEntity> = emptyList()
 
+    /**
+     * The previous position sample, against which the next one is judged a chapter crossing or not
+     * (`add-chapter-summaries` design D6). Null until the first sample, and again after any control
+     * that moves the player — see [forgetLastSample].
+     */
+    private var lastSample: PlaybackSample? = null
+
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             readPlayerState()
@@ -153,7 +189,110 @@ class PlayerViewModel(
         connect()
         observeEbookLink()
         observeNoteCount()
+        observeSummaries()
     }
+
+    /**
+     * Observed rather than read once, because an import happens with the chapter sheet open: the
+     * rows have to gain their controls, and the count line has to change, without the sheet being
+     * dismissed and reopened (`add-chapter-summaries` design D8).
+     */
+    private fun observeSummaries() {
+        viewModelScope.launch {
+            dao.observeChapterSummaries(bookId).collect { rows ->
+                _state.update { state ->
+                    state.copy(summaries = rows.associate { it.chapterIndex to it.text })
+                }
+            }
+        }
+    }
+
+    /**
+     * Reads a picked summary file, matches what it contains against this book's chapters, and
+     * replaces whatever the book carried (design D1, D5).
+     *
+     * The file is finished with the moment this returns. No persistable grant is taken and no URI is
+     * stored: a summary file is a few kilobytes fully consumed here, and keeping a reference would
+     * mean re-parsing on every open of the chapter sheet and losing every summary the first time the
+     * owner tidied a folder on the desktop.
+     *
+     * A successful import says nothing. It does not need to — the sheet's count line is showing the
+     * result already, and unlike a message it is still there tomorrow (design D8). The three ways
+     * this can come to nothing all speak up, because each one is something the owner has to act on.
+     */
+    fun importSummaries(uri: Uri) {
+        viewModelScope.launch {
+            // Whatever the last attempt said is no longer the news.
+            _state.update { it.copy(summaryImportError = null) }
+
+            val chapters = withContext(Dispatchers.IO) { dao.chaptersFor(bookId) }
+            if (chapters.isEmpty()) {
+                reportImportFailure(R.string.summaries_no_chapters)
+                return@launch
+            }
+
+            val text = withContext(Dispatchers.IO) { readSummaryFile(uri) }
+            if (text == null) {
+                reportImportFailure(R.string.summaries_unreadable)
+                return@launch
+            }
+
+            val entries = parseSummaryFile(text)
+            if (entries.isEmpty()) {
+                reportImportFailure(R.string.summaries_no_entries)
+                return@launch
+            }
+
+            val match = matchSummaries(entries, chapters.associate { it.chapterIndex to it.title })
+            if (match.matchedCount == 0) {
+                _state.update {
+                    it.copy(
+                        summaryImportError =
+                            appContext.getString(R.string.summaries_no_match, match.entryCount),
+                    )
+                }
+                return@launch
+            }
+
+            withContext(Dispatchers.IO) {
+                dao.replaceChapterSummaries(
+                    bookId,
+                    match.byChapterIndex.map { (chapterIndex, summary) ->
+                        ChapterSummaryEntity(audiobookId = bookId, chapterIndex = chapterIndex, text = summary)
+                    },
+                )
+            }
+        }
+    }
+
+    private fun reportImportFailure(message: Int) {
+        _state.update { it.copy(summaryImportError = appContext.getString(message)) }
+    }
+
+    /**
+     * The file's text, or null if it could not be read at all.
+     *
+     * Decoded rather than validated: [String] construction from bytes substitutes the replacement
+     * character for anything malformed instead of throwing, so a file saved in some other encoding
+     * imports with a few mangled characters rather than failing outright. That is the better outcome
+     * for text the owner can see and correct.
+     *
+     * [MAX_SUMMARY_FILE_BYTES] guards against a mis-pick rather than against a real summary file. The
+     * picker offers every `text/plain` document on the device, and reading a multi-gigabyte one into
+     * memory to discover it has no chapter markers is not a mistake worth making.
+     */
+    private fun readSummaryFile(uri: Uri): String? = runCatching {
+        appContext.contentResolver.openInputStream(uri)?.use { stream ->
+            val collected = ByteArrayOutputStream()
+            val chunk = ByteArray(READ_CHUNK_BYTES)
+            while (collected.size() < MAX_SUMMARY_FILE_BYTES) {
+                val read = stream.read(chunk)
+                if (read < 0) break
+                collected.write(chunk, 0, minOf(read, MAX_SUMMARY_FILE_BYTES - collected.size()))
+            }
+            String(collected.toByteArray(), Charsets.UTF_8)
+        }
+    }.getOrNull()
 
     /**
      * Observed rather than counted once, so the mark segment's sub-label is right after a note is
@@ -317,17 +456,73 @@ class PlayerViewModel(
         val player = controller ?: return
         val timeline = player.chapterTimeline(chapterDurationsMs)
         val location = player.currentLocation(timeline)
+        val absolutePositionMs = timeline.absolutePosition(location)
         _state.update {
             it.copy(
                 isPlaying = player.isPlaying,
                 chapterNumber = location.chapterIndex + 1,
                 chapterTitle = chapters.getOrNull(location.chapterIndex)?.title.orEmpty(),
-                absolutePositionMs = timeline.absolutePosition(location),
+                absolutePositionMs = absolutePositionMs,
                 bookDurationMs = timeline.totalDurationMs(),
                 chapters = chapterRows(timeline),
                 chapterRemainingMs = timeline.remainingInChapter(location),
             )
         }
+        noteCrossing(player.isPlaying, location.chapterIndex, absolutePositionMs)
+    }
+
+    /**
+     * Watches consecutive samples for a chapter finished under playback, and offers its summary
+     * (`add-chapter-summaries` design D6, D7).
+     *
+     * **Nothing on this path touches the player.** It reads `isPlaying` and a position that was
+     * computed for the UI anyway, and its only effect is a field on the state. The prompt fires when
+     * the owner is most likely walking or driving, and anything that stopped or moved the audio
+     * there would be a demand made at the worst possible moment.
+     *
+     * The offer is a moment rather than a queue: it is marked prompted as it is made, so a crossing
+     * that happens with the Player off screen is simply not offered again. That is design D7's
+     * position, not an oversight — the chapter list is the durable way back to any summary, and an
+     * offer surfacing much later would be about a chapter two chapters ago.
+     */
+    private fun noteCrossing(isPlaying: Boolean, chapterIndex: Int, absolutePositionMs: Long) {
+        val current = PlaybackSample(bookId, chapterIndex, absolutePositionMs)
+        val finished = chapterFinishedBy(lastSample, current, isPlaying)
+        lastSample = current
+        val finishedIndex = finished ?: return
+
+        viewModelScope.launch {
+            val summary = withContext(Dispatchers.IO) { dao.chapterSummary(bookId, finishedIndex) } ?: return@launch
+            if (summary.prompted) return@launch
+
+            withContext(Dispatchers.IO) { dao.markChapterSummaryPrompted(bookId, finishedIndex) }
+            _state.update {
+                it.copy(
+                    summaryPrompt = SummaryPrompt(
+                        chapterIndex = finishedIndex,
+                        chapterTitle = chapters.getOrNull(finishedIndex)?.title.orEmpty(),
+                    ),
+                )
+            }
+        }
+    }
+
+    /**
+     * Forgets the last sample, so the next boundary reached is not read as one the narration carried
+     * the owner over.
+     *
+     * The magnitude test in [chapterFinishedBy] catches a deliberate move on its own in every case
+     * but one: pressing next-chapter a few seconds before the chapter ends advances the index by one
+     * and the position by less than the threshold, which is indistinguishable from listening through.
+     * Rather than widen the threshold — which would start rejecting real crossings — every control
+     * that moves the player says so here.
+     */
+    private fun forgetLastSample() {
+        lastSample = null
+    }
+
+    fun consumeSummaryPrompt() {
+        _state.update { it.copy(summaryPrompt = null) }
     }
 
     /**
@@ -362,6 +557,7 @@ class PlayerViewModel(
         val timeline = player.chapterTimeline(chapterDurationsMs)
         val target = timeline.seekTarget(player.currentLocation(timeline), deltaMs)
         player.seekTo(target.mediaItemIndex, target.positionMs)
+        forgetLastSample()
         readPlayerState()
     }
 
@@ -370,6 +566,7 @@ class PlayerViewModel(
         val timeline = player.chapterTimeline(chapterDurationsMs)
         val target = timeline.previousChapterTarget(player.currentLocation(timeline))
         player.seekTo(target.mediaItemIndex, target.positionMs)
+        forgetLastSample()
         readPlayerState()
     }
 
@@ -378,6 +575,7 @@ class PlayerViewModel(
         val timeline = player.chapterTimeline(chapterDurationsMs)
         val target = timeline.nextChapterTarget(player.currentLocation(timeline)) ?: return
         player.seekTo(target.mediaItemIndex, target.positionMs)
+        forgetLastSample()
         readPlayerState()
     }
 
@@ -386,6 +584,7 @@ class PlayerViewModel(
         val player = controller ?: return
         val target = player.chapterTimeline(chapterDurationsMs).targetForAbsolute(absoluteMs)
         player.seekTo(target.mediaItemIndex, target.positionMs)
+        forgetLastSample()
         readPlayerState()
     }
 
@@ -459,6 +658,11 @@ class PlayerViewModel(
 
     companion object {
         private const val POSITION_POLL_MS = 500L
+
+        /** Generous for chapter summaries, and small enough that a mis-picked file is refused early. */
+        private const val MAX_SUMMARY_FILE_BYTES = 4 * 1024 * 1024
+
+        private const val READ_CHUNK_BYTES = 8 * 1024
 
         fun factory(context: Context, bookId: String): ViewModelProvider.Factory {
             val appContext = context.applicationContext
