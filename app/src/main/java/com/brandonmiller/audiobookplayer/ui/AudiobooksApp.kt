@@ -52,6 +52,7 @@ fun AudiobooksApp() {
         composable(Routes.LIBRARY) {
             LibraryScreen(
                 onBookClick = { bookId -> navController.navigate(Routes.player(bookId)) },
+                onEbookClick = { bookId -> navController.navigate(Routes.reader(bookId)) },
             )
         }
         composable(
@@ -75,6 +76,15 @@ fun AudiobooksApp() {
                 bookId = bookId,
                 onBack = { navController.popBackStack() },
                 onOpenNotes = { noteId -> navController.navigate(Routes.notes(bookId, noteId)) },
+                // A book that was an ebook alone has just gained its audio. The Player takes the
+                // Reader's place rather than stacking on it, so the back stack is the one any book
+                // with audio has — Library, Player — and the Reader is one tap away on the Player's
+                // ebook control, at the same reading position (`add-standalone-ebooks` design D6).
+                onAudioAdded = {
+                    navController.navigate(Routes.player(bookId)) {
+                        popUpTo(Routes.READER) { inclusive = true }
+                    }
+                },
             )
         }
         composable(

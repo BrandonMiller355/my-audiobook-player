@@ -83,6 +83,9 @@ way.
 In scope, and built:
 
 - Linking one EPUB to one audiobook, and reading it inside the app.
+- **Adding an EPUB on its own**, with no audiobook, and reading it; its audio can be added later from
+  the Reader, which turns it into an ordinary book with an ebook linked. §20.1 and §20.4 describe it;
+  `openspec/specs/ebook-linking/` specifies it.
 - **Scrolling the page as the narrator advances**, and moving the audio when the page is moved
   deliberately. §7.3 and §20.4 describe it; `openspec/specs/readalong-sync/` specifies it.
 - **An owner-entered correction** for a chapter the interpolation gets wrong — the "sync here"
@@ -783,9 +786,9 @@ This schema is only a suggestion. Simpler equivalent storage is acceptable.
 
 # 20. UI Screens
 
-Three primary screens, plus the Reader in §20.4 — which exists only for books that have an ebook
-linked — and the Notes screen in §20.5. Both are reached from the Player rather than from navigation
-of their own.
+Three primary screens, plus the Reader in §20.4 — which exists only for books that have an ebook —
+and the Notes screen in §20.5. Both are reached from the Player rather than from navigation of their
+own, except that a book added as an ebook alone opens straight into the Reader, having no Player.
 
 ## 20.1 Library Screen
 
@@ -801,7 +804,8 @@ Book entry shows:
 - Cover
 - Title
 - Progress
-- Chapter count and total length, where the length is known
+- Chapter count and total length, where the length is known — or, for an ebook added on its own,
+  that it has no audio yet
 - An indicator when the book has an ebook linked
 - Optional author
 
@@ -836,13 +840,19 @@ Allow:
 
 - Select folder
 - Select `.m4b` file
+- Select an `.epub`, added as a book of its own with no audio (§3.1)
 
 This can be a small dialog or buttons that launch Android's system picker.
 
 ## 20.4 Reader Screen
 
-Shown only for a book with an ebook linked, and reached from the Player's ebook control. Switching
-between the Player and the Reader must not start, stop, or reposition playback in either direction.
+Shown only for a book with an ebook, and reached from the Player's ebook control — or, for a book
+added as an ebook alone, straight from the Library. Switching between the Player and the Reader must
+not start, stop, or reposition playback in either direction.
+
+For a book with no audio, the Reader has nothing to play and does not touch playback at all: there is
+no play control and no bookmark, and in place of unlinking the ebook it offers adding the audiobook —
+a folder or an `.m4b`, as in §20.3. Once added, the Player takes the Reader's place.
 
 Contains:
 

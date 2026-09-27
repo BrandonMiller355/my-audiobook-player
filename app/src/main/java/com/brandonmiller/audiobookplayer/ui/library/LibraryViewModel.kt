@@ -14,21 +14,19 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import com.brandonmiller.audiobookplayer.R
 import com.brandonmiller.audiobookplayer.data.AudiobookDatabase
 import com.brandonmiller.audiobookplayer.data.AudiobookEntity
-import com.brandonmiller.audiobookplayer.data.ChapterEntity
 import com.brandonmiller.audiobookplayer.data.LibraryBook
 import com.brandonmiller.audiobookplayer.data.LibraryDao
-import com.brandonmiller.audiobookplayer.data.SOURCE_TYPE_FOLDER
-import com.brandonmiller.audiobookplayer.data.SOURCE_TYPE_M4B
 import com.brandonmiller.audiobookplayer.data.SpeedPreferences
+import com.brandonmiller.audiobookplayer.ebook.EbookParseResult
+import com.brandonmiller.audiobookplayer.ebook.EbookSource
 import com.brandonmiller.audiobookplayer.library.CoverStore
 import com.brandonmiller.audiobookplayer.library.FolderScanner
-import com.brandonmiller.audiobookplayer.library.M4B_EXTENSION
 import com.brandonmiller.audiobookplayer.library.M4bReadResult
 import com.brandonmiller.audiobookplayer.library.M4bReader
 import com.brandonmiller.audiobookplayer.library.SampleLibrary
-import com.brandonmiller.audiobookplayer.library.ScanResult
 import com.brandonmiller.audiobookplayer.playback.PlaybackService
 import com.brandonmiller.audiobookplayer.playback.loadBook
 import com.brandonmiller.audiobookplayer.playback.mediaIdBelongsTo
@@ -49,8 +47,9 @@ import java.io.File
 class LibraryViewModel(
     private val appContext: Context,
     private val dao: LibraryDao,
-    private val scanner: FolderScanner,
+    private val importer: AudioImporter,
     private val m4bReader: M4bReader,
+    private val ebooks: EbookSource,
     private val coverStore: CoverStore,
     private val permissions: UriPermissionHolder,
     private val speedPreferences: SpeedPreferences,
@@ -104,7 +103,14 @@ class LibraryViewModel(
      * once per book per library emission.
      */
     val unavailable: StateFlow<Set<Long>> = books
-        .map { list -> list.filterNot { permissions.isHeld(Uri.parse(it.sourceUri)) }.map { it.id }.toSet() }
+        .map { list ->
+            // A book that is an ebook alone depends on its ebook's grant instead, since that is the
+            // only source it has (`add-standalone-ebooks` design D4).
+            list.filterNot { book ->
+                val source = book.sourceUri ?: book.ebookUri
+                source != null && permissions.isHeld(Uri.parse(source))
+            }.map { it.id }.toSet()
+        }
         .flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
@@ -201,7 +207,7 @@ class LibraryViewModel(
 
                 when (val result = withContext(Dispatchers.IO) { m4bReader.read(uri) }) {
                     is M4bReadResult.Read -> {
-                        store(uri, result)
+                        store(AudioImporter.m4b(uri, result))
                         // Only now: an interrupted seed should be retried on the next open, not
                         // recorded as done (design D5).
                         sample.markSeeded()
@@ -220,45 +226,22 @@ class LibraryViewModel(
         }
     }
 
-    fun addFolder(treeUri: Uri) {
+    fun addFolder(treeUri: Uri) = add { importer.folder(treeUri) }
+
+    /** The single-file counterpart to [addFolder]. */
+    fun addM4bFile(documentUri: Uri) = add { importer.m4bFile(documentUri) }
+
+    private fun add(read: () -> AudioImport) {
         viewModelScope.launch {
             _busy.value = true
             try {
-                // Taken before scanning: without it the URI is only good for this one process.
-                permissions.persist(treeUri)
-
-                when (val result = withContext(Dispatchers.IO) { scanner.scan(treeUri) }) {
-                    is ScanResult.Found -> {
-                        val book = AudiobookEntity(
-                            sourceUri = treeUri.toString(),
-                            sourceType = SOURCE_TYPE_FOLDER,
-                            title = result.title,
-                            addedAt = System.currentTimeMillis(),
-                        )
-                        val chapters = result.files.mapIndexed { index, file ->
-                            ChapterEntity(
-                                audiobookId = 0,
-                                chapterIndex = index,
-                                title = file.title,
-                                mediaUri = file.uri.toString(),
-                            )
-                        }
-                        withContext(Dispatchers.IO) { dao.insertBookWithChapters(book, chapters) }
+                when (val result = withContext(Dispatchers.IO) { read() }) {
+                    is AudioImport.Ready -> {
+                        store(result)
+                        result.notice?.let { _message.value = it }
                     }
 
-                    ScanResult.NoSupportedAudio -> {
-                        // Common when a series or parent folder is picked. Give the grant back
-                        // rather than leaking it for a book that was never added.
-                        permissions.release(treeUri)
-                        _message.value =
-                            "No supported audio files in that folder. If the audio is in a " +
-                            "subfolder, pick that subfolder instead."
-                    }
-
-                    is ScanResult.Failed -> {
-                        permissions.release(treeUri)
-                        _message.value = "That folder could not be read: ${result.reason}"
-                    }
+                    is AudioImport.Refused -> _message.value = result.message
                 }
             } finally {
                 _busy.value = false
@@ -266,87 +249,81 @@ class LibraryViewModel(
         }
     }
 
-    /**
-     * The single-file counterpart to [addFolder]. Chapters are parsed once, here, and stored — the
-     * container is never re-read on a later launch (PRD §8, §23).
-     */
-    fun addM4bFile(documentUri: Uri) {
-        viewModelScope.launch {
-            _busy.value = true
-            try {
-                // Taken before reading: without it the URI is only good for this one process.
-                permissions.persist(documentUri)
-
-                val name = withContext(Dispatchers.IO) { m4bReader.displayName(documentUri) }
-                if (!name.endsWith(M4B_EXTENSION, ignoreCase = true)) {
-                    // Give the grant back rather than leaking it for a book that was never added,
-                    // the same discipline a folder with no audio gets.
-                    permissions.release(documentUri)
-                    _message.value = if (name.isBlank()) {
-                        "Only .m4b files can be added this way."
-                    } else {
-                        "Only .m4b files can be added this way, and “$name” is not one."
-                    }
-                    return@launch
-                }
-
-                when (val result = withContext(Dispatchers.IO) { m4bReader.read(documentUri) }) {
-                    is M4bReadResult.Read -> {
-                        store(documentUri, result)
-                        if (result.contents.chaptersUnreadable) {
-                            // Said, not enforced: the audio is almost certainly fine, and refusing
-                            // a playable book over a malformed metadata box would be worse than
-                            // losing its chapter marks (design D5).
-                            _message.value =
-                                "Added, but this file's chapters could not be read, so it is one " +
-                                "chapter covering the whole book."
-                        }
-                    }
-
-                    is M4bReadResult.Failed -> {
-                        permissions.release(documentUri)
-                        _message.value = "That file could not be read: ${result.reason}"
-                    }
-                }
-            } finally {
-                _busy.value = false
-            }
-        }
-    }
-
-    private suspend fun store(documentUri: Uri, result: M4bReadResult.Read) {
-        val contents = result.contents
+    private suspend fun store(audio: AudioImport.Ready) {
         val book = AudiobookEntity(
-            sourceUri = documentUri.toString(),
-            sourceType = SOURCE_TYPE_M4B,
-            title = contents.title,
+            sourceUri = audio.sourceUri.toString(),
+            sourceType = audio.sourceType,
+            title = audio.title,
             addedAt = System.currentTimeMillis(),
         )
-        // Every chapter references the one file, distinguished by its start offset (PRD §19).
-        val chapters = contents.chapters.map { chapter ->
-            ChapterEntity(
-                audiobookId = 0,
-                chapterIndex = chapter.index,
-                title = chapter.title,
-                mediaUri = documentUri.toString(),
-                startPositionMs = chapter.startMs,
-                endPositionMs = chapter.endMs.takeIf { it > chapter.startMs },
-            )
-        }
 
         withContext(Dispatchers.IO) {
-            val bookId = dao.insertBookWithChapters(book, chapters)
+            val bookId = dao.insertBookWithChapters(book, audio.chapters)
             // After the insert, because the cover file is named for a book id that does not exist
             // until then. A book with no cover simply never gets a path.
-            result.artwork
+            audio.artwork
                 ?.let { coverStore.write(bookId, it) }
                 ?.let { path -> dao.updateArtworkPath(bookId, path) }
         }
     }
 
+    /**
+     * Adds an EPUB as a book of its own, with no audio (`add-standalone-ebooks` design D2). It opens
+     * in the Reader, and gains its audio later from the Reader's menu.
+     *
+     * Parsed here rather than merely stored, for the same reason a linked ebook is parsed before the
+     * link is written: a protected or malformed file is refused at the moment it is picked, with the
+     * reason, rather than added and then found unreadable on first open. The parse also gives the
+     * book its title.
+     */
+    fun addEbook(documentUri: Uri) {
+        viewModelScope.launch {
+            _busy.value = true
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    permissions.persist(documentUri)
+                    ebooks.read(documentUri)
+                }
+                if (result !is EbookParseResult.Parsed) {
+                    permissions.release(documentUri)
+                    // The same words a refused link gets in the Reader, from the same strings.
+                    _message.value = appContext.getString(
+                        when (result) {
+                            is EbookParseResult.Encrypted -> R.string.ebook_encrypted
+                            is EbookParseResult.NotAnEpub -> R.string.ebook_not_an_epub
+                            else -> R.string.ebook_unreadable
+                        },
+                    )
+                    return@launch
+                }
+
+                // An EPUB with no title in its package falls back to its file name, as a folder
+                // book falls back to its folder's.
+                val title = result.book.title.ifBlank {
+                    withContext(Dispatchers.IO) { m4bReader.displayName(documentUri) }
+                        .substringBeforeLast('.')
+                        .ifBlank { appContext.getString(R.string.library_untitled_ebook) }
+                }
+                withContext(Dispatchers.IO) {
+                    dao.insertBook(
+                        AudiobookEntity(
+                            sourceUri = null,
+                            sourceType = null,
+                            title = title,
+                            addedAt = System.currentTimeMillis(),
+                            ebookUri = documentUri.toString(),
+                        ),
+                    )
+                }
+            } finally {
+                _busy.value = false
+            }
+        }
+    }
+
     fun remove(book: LibraryBook) {
         viewModelScope.launch {
-            val sourceUri = Uri.parse(book.sourceUri)
+            val sourceUri = book.sourceUri?.let(Uri::parse)
             withContext(Dispatchers.IO) {
                 dao.deleteBook(book.id)
                 // Room's cascade covers rows, not files (design D7).
@@ -354,11 +331,13 @@ class LibraryViewModel(
                 // The one file removal may delete, and only because the app wrote it itself:
                 // [SampleLibrary.delete] does nothing for a source it does not own, so a book the
                 // user added is untouched on disk (design D9).
-                sample.delete(sourceUri)
+                sourceUri?.let(sample::delete)
             }
             // Grants are a finite system-wide resource; leaking one per removed book eventually
-            // breaks adding new ones, and the failure shows up much later looking unrelated.
-            permissions.release(sourceUri)
+            // breaks adding new ones, and the failure shows up much later looking unrelated. The
+            // ebook's grant goes too — for a book that is an ebook alone it is the only one it holds.
+            sourceUri?.let(permissions::release)
+            book.ebookUri?.let { permissions.release(Uri.parse(it)) }
         }
     }
 
@@ -375,8 +354,13 @@ class LibraryViewModel(
                     LibraryViewModel(
                         appContext = appContext,
                         dao = AudiobookDatabase.get(appContext).libraryDao(),
-                        scanner = FolderScanner(appContext.contentResolver),
+                        importer = AudioImporter(
+                            scanner = FolderScanner(appContext.contentResolver),
+                            m4bReader = M4bReader(appContext),
+                            permissions = UriPermissionHolder(appContext),
+                        ),
                         m4bReader = M4bReader(appContext),
+                        ebooks = EbookSource(appContext.contentResolver),
                         coverStore = CoverStore(appContext.filesDir),
                         permissions = UriPermissionHolder(appContext),
                         speedPreferences = SpeedPreferences(appContext),

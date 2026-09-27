@@ -89,6 +89,7 @@ import com.brandonmiller.audiobookplayer.ui.SummaryIcon
 fun ReaderChrome(
     visible: Boolean,
     isPlaying: Boolean,
+    hasAudio: Boolean,
     menuOpen: Boolean,
     hasContents: Boolean,
     canSearch: Boolean,
@@ -104,6 +105,7 @@ fun ReaderChrome(
     onSync: () -> Unit,
     onChange: () -> Unit,
     onUnlink: () -> Unit,
+    onAddAudio: () -> Unit,
 ) {
     AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
         // Fills the screen, not just its content: the row aligns to the top edge, and a box sized to
@@ -129,27 +131,33 @@ fun ReaderChrome(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconTooltip(stringResource(R.string.reader_back)) {
+                // A book that is an ebook alone was opened from the Library, so that is where back goes.
+                val backLabel = stringResource(if (hasAudio) R.string.reader_back else R.string.reader_back_library)
+                IconTooltip(backLabel) {
                     ChromeButton(onClick = onBack) {
                         ChevronIcon(
                             direction = HorizontalDirection.Left,
                             size = 24.dp,
                             color = ReaderChromeInk,
-                            contentDescription = stringResource(R.string.reader_back),
+                            contentDescription = backLabel,
                         )
                     }
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val playPauseLabel = stringResource(
-                        if (isPlaying) R.string.player_pause else R.string.player_play,
-                    )
-                    IconTooltip(playPauseLabel) {
-                        ChromeButton(onClick = onPlayPause) {
-                            if (isPlaying) {
-                                PauseIcon(20.dp, ReaderChromeInk, playPauseLabel)
-                            } else {
-                                PlayIcon(20.dp, ReaderChromeInk, playPauseLabel)
+                    // Absent rather than disabled with no audio: there is nothing of this book's to
+                    // play, and a live control would start whichever other book the session holds.
+                    if (hasAudio) {
+                        val playPauseLabel = stringResource(
+                            if (isPlaying) R.string.player_pause else R.string.player_play,
+                        )
+                        IconTooltip(playPauseLabel) {
+                            ChromeButton(onClick = onPlayPause) {
+                                if (isPlaying) {
+                                    PauseIcon(20.dp, ReaderChromeInk, playPauseLabel)
+                                } else {
+                                    PlayIcon(20.dp, ReaderChromeInk, playPauseLabel)
+                                }
                             }
                         }
                     }
@@ -167,6 +175,7 @@ fun ReaderChrome(
                             hasContents = hasContents,
                             canSearch = canSearch,
                             canSync = canSync,
+                            hasAudio = hasAudio,
                             onDismiss = { onMenuOpenChange(false) },
                             onSearch = onSearch,
                             onContents = onContents,
@@ -176,6 +185,7 @@ fun ReaderChrome(
                             onSync = onSync,
                             onChange = onChange,
                             onUnlink = onUnlink,
+                            onAddAudio = onAddAudio,
                         )
                     }
                 }
@@ -194,6 +204,10 @@ fun ReaderChrome(
  *
  * The two ebook-management actions sit below a divider because they are a different kind of thing:
  * the rest change how this book is being read, those two change which book is linked at all.
+ *
+ * A book that is an ebook alone (`add-standalone-ebooks` design D5) has no bookmark — a mark is
+ * anchored in the audio — and no unlink, which would leave it with nothing to open. Adding its
+ * audio takes unlink's place below the divider, since it too changes what the book is made of.
  */
 @Composable
 private fun ReaderMenu(
@@ -201,6 +215,7 @@ private fun ReaderMenu(
     hasContents: Boolean,
     canSearch: Boolean,
     canSync: Boolean,
+    hasAudio: Boolean,
     onDismiss: () -> Unit,
     onSearch: () -> Unit,
     onContents: () -> Unit,
@@ -210,6 +225,7 @@ private fun ReaderMenu(
     onSync: () -> Unit,
     onChange: () -> Unit,
     onUnlink: () -> Unit,
+    onAddAudio: () -> Unit,
 ) {
     DropdownMenu(
         expanded = expanded,
@@ -223,7 +239,9 @@ private fun ReaderMenu(
         if (canSearch) {
             ReaderMenuItem(stringResource(R.string.reader_search)) { onDismiss(); onSearch() }
         }
-        ReaderMenuItem(stringResource(R.string.reader_bookmark)) { onDismiss(); onBookmark() }
+        if (hasAudio) {
+            ReaderMenuItem(stringResource(R.string.reader_bookmark)) { onDismiss(); onBookmark() }
+        }
         // Only for a book that follows the narration: there is nothing to line up otherwise.
         if (canSync) {
             ReaderMenuItem(stringResource(R.string.reader_sync)) { onDismiss(); onSync() }
@@ -236,8 +254,13 @@ private fun ReaderMenu(
             modifier = Modifier.padding(vertical = 4.dp),
         )
 
+        if (!hasAudio) {
+            ReaderMenuItem(stringResource(R.string.reader_add_audio)) { onDismiss(); onAddAudio() }
+        }
         ReaderMenuItem(stringResource(R.string.reader_change)) { onDismiss(); onChange() }
-        ReaderMenuItem(stringResource(R.string.reader_unlink)) { onDismiss(); onUnlink() }
+        if (hasAudio) {
+            ReaderMenuItem(stringResource(R.string.reader_unlink)) { onDismiss(); onUnlink() }
+        }
     }
 }
 
@@ -568,6 +591,37 @@ fun ReadingSettingsSheet(
                     TypefaceChip(stringResource(R.string.reader_typeface_serif), settings.serif) { onSerif(true) }
                     TypefaceChip(stringResource(R.string.reader_typeface_sans), !settings.serif) { onSerif(false) }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * The two ways to give a book that is an ebook alone its audio — the same two the Library's add
+ * control offers, because it is the same audio and it is read the same way
+ * (`add-standalone-ebooks` design D3). Each choice opens its picker; dismissing the sheet opens none.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddAudioSheet(
+    onDismiss: () -> Unit,
+    onChooseFolder: () -> Unit,
+    onChooseFile: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = ReaderSheet,
+    ) {
+        Column(
+            modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(stringResource(R.string.reader_add_audio_title), color = ReaderChromeInk, fontSize = 18.sp)
+            Text(stringResource(R.string.reader_add_audio_body), color = ReaderChromeInkDim, fontSize = 15.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ReaderTextButton(stringResource(R.string.library_empty_folder)) { onDismiss(); onChooseFolder() }
+                ReaderTextButton(stringResource(R.string.library_empty_file)) { onDismiss(); onChooseFile() }
             }
         }
     }

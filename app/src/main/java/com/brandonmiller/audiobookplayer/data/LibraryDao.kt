@@ -45,7 +45,7 @@ interface LibraryDao {
                    WHERE p.audiobookId = a.id AND p.chapterIndex < a.lastMediaItemIndex
                ) + a.lastPositionMs AS positionMs,
                a.lastPlayedAt AS lastPlayedAt,
-               a.ebookUri IS NOT NULL AS hasEbook,
+               a.ebookUri AS ebookUri,
                (SELECT COUNT(*) FROM notes n WHERE n.audiobookId = a.id) AS noteCount
         FROM audiobooks a
         LEFT JOIN chapters c ON c.audiobookId = a.id
@@ -85,6 +85,39 @@ interface LibraryDao {
         insertChapters(chapters.map { it.copy(audiobookId = bookId) })
         return bookId
     }
+
+    /**
+     * Gives a book that was added as an ebook alone its audio (`add-standalone-ebooks` design D3):
+     * the source columns and the chapters, together or not at all.
+     *
+     * The same row gains them rather than a new audiobook being added and the ebook moved across,
+     * so the reading position, the title the owner has been seeing, and the book's place in the
+     * library all carry over untouched.
+     *
+     * Guarded on the book still having no audio. Adding audio to a book that already has chapters
+     * would interleave two scans' chapter indices, and nothing in the UI offers it; the guard is
+     * what makes that a no-op rather than a corrupted book if a double tap ever gets through.
+     * Returns whether the audio was attached.
+     */
+    @Transaction
+    suspend fun attachAudio(
+        audiobookId: Long,
+        sourceUri: String,
+        sourceType: String,
+        chapters: List<ChapterEntity>,
+    ): Boolean {
+        if (setAudioSource(audiobookId, sourceUri, sourceType) == 0) return false
+        insertChapters(chapters.map { it.copy(audiobookId = audiobookId) })
+        return true
+    }
+
+    @Query(
+        """
+        UPDATE audiobooks SET sourceUri = :sourceUri, sourceType = :sourceType
+        WHERE id = :audiobookId AND sourceUri IS NULL
+        """,
+    )
+    suspend fun setAudioSource(audiobookId: Long, sourceUri: String, sourceType: String): Int
 
     /** Chapters cascade. This removes the app's record only — never the user's files. */
     @Query("DELETE FROM audiobooks WHERE id = :audiobookId")
@@ -141,12 +174,18 @@ interface LibraryDao {
     )
     suspend fun linkEbook(audiobookId: Long, ebookUri: String)
 
-    /** Removes the app's record of the ebook. Never touches the file, as with removing a book. */
+    /**
+     * Removes the app's record of the ebook. Never touches the file, as with removing a book.
+     *
+     * Does nothing to a book that is an ebook alone (`add-standalone-ebooks` design D5): unlinking
+     * would leave a row with neither audio nor text, which no screen can open. Such a book leaves
+     * the library by being removed, like any other.
+     */
     @Query(
         """
         UPDATE audiobooks
         SET ebookUri = NULL, ebookSpineIndex = NULL, ebookCharOffset = NULL
-        WHERE id = :audiobookId
+        WHERE id = :audiobookId AND sourceUri IS NOT NULL
         """,
     )
     suspend fun unlinkEbook(audiobookId: Long)
