@@ -227,3 +227,56 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
         )
     }
 }
+
+/**
+ * Lets a book exist as an ebook alone, by making `sourceUri` and `sourceType` nullable
+ * (`add-standalone-ebooks` design D1). Every existing row has both set and keeps them: nothing is
+ * backfilled, and the library at version 10 is the library at version 9 until an ebook is added on
+ * its own.
+ *
+ * A table rebuild in the shape of [MIGRATION_5_6], and for the same reason: SQLite cannot relax a
+ * column's `NOT NULL` in place. The same hazard applies too — `chapters`, `notes`,
+ * `read_along_corrections`, and `chapter_summaries` all cascade from `audiobooks`, so dropping it
+ * with foreign keys enforced would empty all four. It is safe only because Room runs migrations
+ * before enabling `PRAGMA foreign_keys`, and `Migration9To10Test` asserts every child row survives
+ * rather than trusting that.
+ *
+ * The column list matches the version 10 export exactly, in order; `Migration9To10Test` pins it.
+ */
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE audiobooks_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                sourceUri TEXT,
+                sourceType TEXT,
+                title TEXT NOT NULL,
+                addedAt INTEGER NOT NULL,
+                lastPlayedAt INTEGER,
+                lastMediaItemIndex INTEGER,
+                lastPositionMs INTEGER,
+                playbackSpeed REAL,
+                artworkPath TEXT,
+                ebookUri TEXT,
+                ebookSpineIndex INTEGER,
+                ebookCharOffset INTEGER,
+                readAlongChapterOffset INTEGER
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO audiobooks_new (id, sourceUri, sourceType, title, addedAt, lastPlayedAt,
+                                        lastMediaItemIndex, lastPositionMs, playbackSpeed, artworkPath,
+                                        ebookUri, ebookSpineIndex, ebookCharOffset, readAlongChapterOffset)
+            SELECT id, sourceUri, sourceType, title, addedAt, lastPlayedAt,
+                   lastMediaItemIndex, lastPositionMs, playbackSpeed, artworkPath,
+                   ebookUri, ebookSpineIndex, ebookCharOffset, readAlongChapterOffset
+            FROM audiobooks
+            """.trimIndent(),
+        )
+        db.execSQL("DROP TABLE audiobooks")
+        db.execSQL("ALTER TABLE audiobooks_new RENAME TO audiobooks")
+    }
+}

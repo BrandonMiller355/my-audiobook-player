@@ -12,12 +12,17 @@ const val SOURCE_TYPE_M4B = "M4B"
  * A book in the library. [sourceUri] is what the user picked, held under a persistable read
  * permission — a SAF tree URI for a folder book, a single document URI for an `.m4b` — and the
  * app never copies the audio itself (PRD §16).
+ *
+ * [sourceUri] and [sourceType] are null together for a book added as an ebook alone
+ * (`add-standalone-ebooks` design D1): such a book has [ebookUri] set and no chapters, and gains
+ * its audio later by filling in both columns and writing its chapters, never by becoming a
+ * different row. At least one of [sourceUri] and [ebookUri] is always set.
  */
 @Entity(tableName = "audiobooks")
 data class AudiobookEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val sourceUri: String,
-    val sourceType: String,
+    val sourceUri: String?,
+    val sourceType: String?,
     val title: String,
     val addedAt: Long,
     val lastPlayedAt: Long? = null,
@@ -233,7 +238,8 @@ data class ChapterSummaryEntity(
 data class LibraryBook(
     val id: Long,
     val title: String,
-    val sourceUri: String,
+    /** The audio's source, or null for a book that is an ebook alone (`add-standalone-ebooks`). */
+    val sourceUri: String?,
     val chapterCount: Int,
     val artworkPath: String? = null,
     /**
@@ -254,11 +260,14 @@ data class LibraryBook(
     /** When this book was last played, or null if it never has been — the resume card's tiebreak. */
     val lastPlayedAt: Long? = null,
     /**
-     * Whether this book has an ebook linked (`add-ebook-companion` design D16). A boolean rather
-     * than the URI: the row needs to know *whether*, not *which*, and carrying a URI through a
-     * query that runs on every library emission buys nothing.
+     * The linked ebook's URI, or null when there is none.
+     *
+     * `add-ebook-companion` design D16 carried only a boolean here, because the row needed to know
+     * *whether* and not *which*. A book that is an ebook alone changed that
+     * (`add-standalone-ebooks` design D4): its ebook is the only source it has, so the row's
+     * availability check and the grant removal gives back both need the URI itself.
      */
-    val hasEbook: Boolean = false,
+    val ebookUri: String? = null,
     /**
      * How many marks and notes this book carries. Not shown on the row — it exists so the removal
      * confirmation can state what it is about to destroy, notes being the only user-authored content
@@ -266,6 +275,12 @@ data class LibraryBook(
      */
     val noteCount: Int = 0,
 ) {
+    /** Whether this book has an ebook linked — the library row's indicator. */
+    val hasEbook: Boolean get() = ebookUri != null
+
+    /** Whether this book has audio at all, or is an ebook on its own (`add-standalone-ebooks`). */
+    val hasAudio: Boolean get() = sourceUri != null
+
     /**
      * How far through the book the saved position is, or null when either figure is missing. Both
      * are needed: a position without a total says nothing about progress.

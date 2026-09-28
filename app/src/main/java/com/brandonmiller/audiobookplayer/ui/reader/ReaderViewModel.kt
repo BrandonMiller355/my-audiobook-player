@@ -25,6 +25,9 @@ import com.brandonmiller.audiobookplayer.ebook.EbookSource
 import com.brandonmiller.audiobookplayer.ebook.ReadingPosition
 import com.brandonmiller.audiobookplayer.ebook.SearchHit
 import com.brandonmiller.audiobookplayer.ebook.TextPosition
+import com.brandonmiller.audiobookplayer.library.CoverStore
+import com.brandonmiller.audiobookplayer.library.FolderScanner
+import com.brandonmiller.audiobookplayer.library.M4bReader
 import com.brandonmiller.audiobookplayer.playback.NUDGE_STEP_MS
 import com.brandonmiller.audiobookplayer.playback.PlaybackService
 import com.brandonmiller.audiobookplayer.playback.ReadAlongAnchor
@@ -39,6 +42,8 @@ import com.brandonmiller.audiobookplayer.playback.currentLocation
 import com.brandonmiller.audiobookplayer.playback.expressibleCorrectionRange
 import com.brandonmiller.audiobookplayer.playback.matchChapters
 import com.brandonmiller.audiobookplayer.playback.noteAnchorFor
+import com.brandonmiller.audiobookplayer.ui.library.AudioImport
+import com.brandonmiller.audiobookplayer.ui.library.AudioImporter
 import com.brandonmiller.audiobookplayer.ui.library.UriPermissionHolder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -103,6 +108,22 @@ data class ReaderUiState(
      * with its entries — in both cases the contents sheet is what it was before this change.
      */
     val summariesByBlock: Map<Int, ChapterSummary> = emptyMap(),
+    /**
+     * Whether this book has audio, or is an ebook on its own (`add-standalone-ebooks` design D5).
+     * Without audio the reader never connects to the playback session, so it cannot show — let
+     * alone pause — some other book that happens to be playing; and it offers adding the audio in
+     * place of the controls that need it.
+     *
+     * True until the book is read, because that is every book the Player opens this screen for, and
+     * a play control that appears a moment late would flicker on every one of them.
+     */
+    val hasAudio: Boolean = true,
+    /** Set while a picked folder or `.m4b` is being read into this book. */
+    val addingAudio: Boolean = false,
+    /** Set once audio has been added, so the screen hands over to the Player. */
+    val audioAdded: Boolean = false,
+    /** Why a picked folder or `.m4b` was refused, for a passing message over the page. */
+    val audioMessage: String? = null,
 )
 
 /**
@@ -121,6 +142,8 @@ class ReaderViewModel(
     private val ebooks: EbookSource,
     private val permissions: UriPermissionHolder,
     private val preferences: ReadingPreferences,
+    private val importer: AudioImporter,
+    private val coverStore: CoverStore,
     private val bookId: Long,
 ) : ViewModel() {
 
@@ -232,11 +255,12 @@ class ReaderViewModel(
         positionTrackingJob = null
     }
 
+    // No connection here: whether to connect at all depends on whether the book has audio, which
+    // `load` is the first to find out (`add-standalone-ebooks` design D5).
     init {
         load()
         observeSettings()
         observeSummaries()
-        connect()
     }
 
     private fun observeSettings() {
@@ -258,6 +282,18 @@ class ReaderViewModel(
                 controller = connected
                 connected.addListener(listener)
                 _state.update { it.copy(isPlaying = connected.isPlaying) }
+                // The ebook can finish parsing before the connection lands, and the map needs the
+                // player's chapter timeline. Built here in that case rather than left missing until
+                // the reader is reopened.
+                val loaded = _state.value.book
+                if (loaded != null && _state.value.readAlongMap == null) {
+                    viewModelScope.launch {
+                        val offset = withContext(Dispatchers.IO) { dao.findBook(bookId) }?.readAlongChapterOffset
+                        val map = buildReadAlongMap(loaded, offset ?: 0)
+                        // Only if the book on screen is still the one the map was built for.
+                        _state.update { if (it.book === loaded) it.copy(readAlongMap = map) else it }
+                    }
+                }
             },
             ContextCompat.getMainExecutor(appContext),
         )
@@ -273,6 +309,8 @@ class ReaderViewModel(
                 _state.update { it.copy(loading = false, unavailableMessage = R.string.ebook_unreadable) }
                 return@launch
             }
+
+            if (book.sourceUri != null) connect() else _state.update { it.copy(hasAudio = false) }
 
             when (val result = withContext(Dispatchers.IO) { ebooks.read(uri) }) {
                 is EbookParseResult.Parsed -> {
@@ -701,10 +739,74 @@ class ReaderViewModel(
                         ebooks = EbookSource(appContext.contentResolver),
                         permissions = UriPermissionHolder(appContext),
                         preferences = ReadingPreferences(appContext),
+                        importer = AudioImporter(
+                            scanner = FolderScanner(appContext.contentResolver),
+                            m4bReader = M4bReader(appContext),
+                            permissions = UriPermissionHolder(appContext),
+                        ),
+                        coverStore = CoverStore(appContext.filesDir),
                         bookId = bookId.toLongOrNull() ?: -1L,
                     ) as T
             }
         }
+    }
+
+    // ------------------------------------------------------------------ adding audio
+
+    fun addAudioFolder(treeUri: Uri) = addAudio { importer.folder(treeUri) }
+
+    fun addAudioFile(documentUri: Uri) = addAudio { importer.m4bFile(documentUri) }
+
+    /**
+     * Gives a book that so far is an ebook alone its audio (`add-standalone-ebooks` design D3).
+     *
+     * The same row gains the source and the chapters, so the reading position and everything else
+     * about the book carries over. Nothing here touches playback: the screen hands over to the
+     * Player once this lands, and the Player loads the book the way it loads any other.
+     */
+    private fun addAudio(read: () -> AudioImport) {
+        if (_state.value.hasAudio || _state.value.addingAudio) return
+        viewModelScope.launch {
+            _state.update { it.copy(addingAudio = true) }
+            try {
+                when (val result = withContext(Dispatchers.IO) { read() }) {
+                    is AudioImport.Ready -> {
+                        val attached = withContext(Dispatchers.IO) {
+                            val attached = dao.attachAudio(
+                                audiobookId = bookId,
+                                sourceUri = result.sourceUri.toString(),
+                                sourceType = result.sourceType,
+                                chapters = result.chapters,
+                            )
+                            if (attached) {
+                                // An ebook alone has no cover of its own, so the audio's is the
+                                // book's first one.
+                                result.artwork
+                                    ?.let { coverStore.write(bookId, it) }
+                                    ?.let { path -> dao.updateArtworkPath(bookId, path) }
+                            } else {
+                                // Already has audio; the grant just taken is holding nothing.
+                                permissions.release(result.sourceUri)
+                            }
+                            attached
+                        }
+                        if (attached) {
+                            _state.update {
+                                it.copy(hasAudio = true, audioAdded = true, audioMessage = result.notice)
+                            }
+                        }
+                    }
+
+                    is AudioImport.Refused -> _state.update { it.copy(audioMessage = result.message) }
+                }
+            } finally {
+                _state.update { it.copy(addingAudio = false) }
+            }
+        }
+    }
+
+    fun consumeAudioMessage() {
+        _state.update { it.copy(audioMessage = null) }
     }
 
     fun togglePlayPause() {
@@ -759,8 +861,14 @@ class ReaderViewModel(
         }
     }
 
-    /** Removes the app's record of the ebook. The file itself is never touched. */
+    /**
+     * Removes the app's record of the ebook. The file itself is never touched.
+     *
+     * Not for a book that is an ebook alone, which would be left with nothing to open; the menu does
+     * not offer it there, and [LibraryDao.unlinkEbook] refuses it regardless.
+     */
     fun unlinkEbook() {
+        if (!_state.value.hasAudio) return
         viewModelScope.launch {
             val previous = withContext(Dispatchers.IO) { dao.findBook(bookId)?.ebookUri }
             cancelPendingNudge()

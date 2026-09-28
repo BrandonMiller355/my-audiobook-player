@@ -76,6 +76,7 @@ private val Gutter = 22.dp
 @Composable
 fun LibraryScreen(
     onBookClick: (String) -> Unit,
+    onEbookClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = viewModel(factory = LibraryViewModel.factory(LocalContext.current)),
 ) {
@@ -101,6 +102,17 @@ fun LibraryScreen(
         if (documentUri != null) viewModel.addM4bFile(documentUri)
     }
 
+    val pickEbook = rememberLauncherForActivityResult(OpenPersistableDocument()) { documentUri ->
+        if (documentUri != null) viewModel.addEbook(documentUri)
+    }
+
+    // A book with audio opens the Player, as it always has. A book that is an ebook alone has no
+    // Player to open — nothing to play — so it opens straight into the Reader
+    // (`add-standalone-ebooks` design D4).
+    val open: (LibraryBook) -> Unit = { book ->
+        if (book.hasAudio) onBookClick(book.id.toString()) else onEbookClick(book.id.toString())
+    }
+
     LaunchedEffect(message) {
         message?.let {
             snackbarHostState.showSnackbar(it)
@@ -124,6 +136,7 @@ fun LibraryScreen(
                 enabled = !busy,
                 onAddFolder = { pickFolder.launch(null) },
                 onAddFile = { pickFile.launch(OpenPersistableDocument.AUDIO_MIME_TYPES) },
+                onAddEbook = { pickEbook.launch(OpenPersistableDocument.EBOOK_MIME_TYPES) },
             )
 
             if (busy) {
@@ -139,13 +152,14 @@ fun LibraryScreen(
                     modifier = Modifier.fillMaxSize(),
                     onChooseFolder = { pickFolder.launch(null) },
                     onChooseFile = { pickFile.launch(OpenPersistableDocument.AUDIO_MIME_TYPES) },
+                    onChooseEbook = { pickEbook.launch(OpenPersistableDocument.EBOOK_MIME_TYPES) },
                 )
             } else {
                 resumeBook?.let { book ->
                     ResumeCard(
                         book = book,
                         isPlaying = resumeIsPlaying,
-                        onOpen = { onBookClick(book.id.toString()) },
+                        onOpen = { open(book) },
                         onPlayPause = viewModel::toggleResumePlayback,
                         onLongClick = { pendingRemoval = book },
                     )
@@ -159,7 +173,7 @@ fun LibraryScreen(
                         BookRow(
                             book = book,
                             isUnavailable = book.id in unavailable,
-                            onClick = { onBookClick(book.id.toString()) },
+                            onClick = { open(book) },
                             onLongClick = { pendingRemoval = book },
                         )
                     }
@@ -185,7 +199,12 @@ fun LibraryScreen(
  * holding a bar's worth of height above a screen whose whole point is the books.
  */
 @Composable
-private fun LibraryHeader(enabled: Boolean, onAddFolder: () -> Unit, onAddFile: () -> Unit) {
+private fun LibraryHeader(
+    enabled: Boolean,
+    onAddFolder: () -> Unit,
+    onAddFile: () -> Unit,
+    onAddEbook: () -> Unit,
+) {
     val colors = audiobookColors
 
     Row(
@@ -200,16 +219,21 @@ private fun LibraryHeader(enabled: Boolean, onAddFolder: () -> Unit, onAddFile: 
             style = AudiobookType.displayScreen,
             color = colors.ink,
         )
-        AddMenu(enabled = enabled, onAddFolder = onAddFolder, onAddFile = onAddFile)
+        AddMenu(enabled = enabled, onAddFolder = onAddFolder, onAddFile = onAddFile, onAddEbook = onAddEbook)
     }
 }
 
 /**
- * The add control offers both book types rather than assuming one. Dismissing it opens no picker
- * and changes nothing.
+ * The add control offers both book types rather than assuming one, and an ebook on its own below
+ * them. Dismissing it opens no picker and changes nothing.
  */
 @Composable
-private fun AddMenu(enabled: Boolean, onAddFolder: () -> Unit, onAddFile: () -> Unit) {
+private fun AddMenu(
+    enabled: Boolean,
+    onAddFolder: () -> Unit,
+    onAddFile: () -> Unit,
+    onAddEbook: () -> Unit,
+) {
     val colors = audiobookColors
     var expanded by remember { mutableStateOf(false) }
 
@@ -243,6 +267,13 @@ private fun AddMenu(enabled: Boolean, onAddFolder: () -> Unit, onAddFile: () -> 
                 onClick = {
                     expanded = false
                     onAddFile()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.library_add_ebook)) },
+                onClick = {
+                    expanded = false
+                    onAddEbook()
                 },
             )
         }
@@ -407,16 +438,24 @@ private fun BookRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         // The duration is omitted rather than faked when it is not yet known — see
-                        // `LibraryBook.durationMs`.
-                        text = book.durationMs?.let {
-                            stringResource(R.string.library_row_meta, book.chapterCount, formatDuration(it))
-                        } ?: stringResource(R.string.library_row_meta_no_duration, book.chapterCount),
+                        // `LibraryBook.durationMs`. A book with no audio has neither figure, and
+                        // says so rather than claiming zero chapters.
+                        text = when {
+                            !book.hasAudio -> stringResource(R.string.library_row_meta_ebook_only)
+                            book.durationMs != null -> stringResource(
+                                R.string.library_row_meta,
+                                book.chapterCount,
+                                formatDuration(book.durationMs),
+                            )
+                            else -> stringResource(R.string.library_row_meta_no_duration, book.chapterCount)
+                        },
                         style = AudiobookType.monoMeta,
                         color = colors.textTertiary,
                     )
                     // An indicator, not a control: the row stays one large tap target, and the
                     // reader is one further tap away regardless (`add-ebook-companion` design D16).
-                    if (book.hasEbook) {
+                    // Not on a book that is an ebook alone: its meta line already says so.
+                    if (book.hasEbook && book.hasAudio) {
                         Spacer(Modifier.width(8.dp))
                         BookIcon(
                             size = 14.dp,
@@ -432,14 +471,15 @@ private fun BookRow(
 }
 
 /**
- * The empty library is the add flow, rather than a message about it. Both buttons open their
- * picker directly, so getting the first book in is one tap rather than a menu and then a tap.
+ * The empty library is the add flow, rather than a message about it. Every button opens its picker
+ * directly, so getting the first book in is one tap rather than a menu and then a tap.
  */
 @Composable
 private fun EmptyLibrary(
     modifier: Modifier = Modifier,
     onChooseFolder: () -> Unit,
     onChooseFile: () -> Unit,
+    onChooseEbook: () -> Unit,
 ) {
     val colors = audiobookColors
 
@@ -478,6 +518,15 @@ private fun EmptyLibrary(
             content = colors.ink,
             onClick = onChooseFile,
         ) { size, color -> DocumentIcon(size, color, contentDescription = null) }
+
+        Spacer(Modifier.height(12.dp))
+
+        EmptyStateButton(
+            label = stringResource(R.string.library_empty_ebook),
+            background = colors.fill,
+            content = colors.ink,
+            onClick = onChooseEbook,
+        ) { size, color -> BookIcon(size, color, filled = false, contentDescription = null) }
 
         Spacer(Modifier.height(24.dp))
 

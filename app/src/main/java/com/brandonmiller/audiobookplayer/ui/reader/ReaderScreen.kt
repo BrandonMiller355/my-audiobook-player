@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollBy
@@ -23,6 +24,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.selection.TextSelectionColors
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -119,6 +121,7 @@ fun ReaderScreen(
     bookId: String,
     onBack: () -> Unit,
     onOpenNotes: (Long) -> Unit,
+    onAudioAdded: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ReaderViewModel = viewModel(
         factory = ReaderViewModel.factory(LocalContext.current, bookId),
@@ -144,6 +147,7 @@ fun ReaderScreen(
     // state, and observing it here would recompose the whole reader on every frame of every scroll.
     var contentsAnchorBlock by remember { mutableStateOf(0) }
     var searchOpen by remember { mutableStateOf(false) }
+    var addAudioOpen by remember { mutableStateOf(false) }
 
     // The loop guard (design D4). Set only by a scroll the user's finger caused, so the reader
     // following the narration never looks like the user moving the text. A flick reports
@@ -170,6 +174,14 @@ fun ReaderScreen(
         uri?.let(viewModel::changeEbook)
     }
 
+    // The Library's two add paths, pointed at this book rather than at a new one.
+    val pickAudioFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        uri?.let(viewModel::addAudioFolder)
+    }
+    val pickAudioFile = rememberLauncherForActivityResult(OpenPersistableDocument()) { uri ->
+        uri?.let(viewModel::addAudioFile)
+    }
+
     val snackbarHostState = remember { SnackbarHostState() }
     val pickError = state.pickErrorMessage?.let { stringResource(it) }
 
@@ -177,6 +189,17 @@ fun ReaderScreen(
 
     LaunchedEffect(state.closed) {
         if (state.closed) onBack()
+    }
+
+    LaunchedEffect(state.audioAdded) {
+        if (state.audioAdded) onAudioAdded()
+    }
+
+    LaunchedEffect(state.audioMessage) {
+        state.audioMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.consumeAudioMessage()
+        }
     }
 
     LaunchedEffect(pickError) {
@@ -358,6 +381,7 @@ fun ReaderScreen(
 
             state.unavailableMessage != null -> ReaderUnavailable(
                 message = stringResource(state.unavailableMessage!!),
+                backLabel = stringResource(if (state.hasAudio) R.string.reader_back else R.string.reader_back_library),
                 onRelink = { pickEbook.launch(OpenPersistableDocument.EBOOK_MIME_TYPES) },
                 onBack = onBack,
             )
@@ -377,6 +401,7 @@ fun ReaderScreen(
         ReaderChrome(
             visible = chromeVisible,
             isPlaying = state.isPlaying,
+            hasAudio = state.hasAudio,
             menuOpen = menuOpen,
             hasContents = state.book?.contents?.isNotEmpty() == true,
             canSearch = state.book != null,
@@ -395,7 +420,17 @@ fun ReaderScreen(
             onBookmark = viewModel::bookmark,
             onSync = { syncOpen = true },
             onUnlink = viewModel::unlinkEbook,
+            onAddAudio = { addAudioOpen = true },
         )
+
+        // A scan can open up to 128 files, so the wait is shown rather than left as a dead page.
+        if (state.addingAudio) {
+            LinearProgressIndicator(
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+                color = ReaderInk,
+                trackColor = ReaderRule,
+            )
+        }
 
         SnackbarHost(
             hostState = snackbarHostState,
@@ -465,6 +500,14 @@ fun ReaderScreen(
             atLimit = state.correctionAtLimit,
             onDismiss = { syncOpen = false },
             onNudge = viewModel::nudge,
+        )
+    }
+
+    if (addAudioOpen) {
+        AddAudioSheet(
+            onDismiss = { addAudioOpen = false },
+            onChooseFolder = { pickAudioFolder.launch(null) },
+            onChooseFile = { pickAudioFile.launch(OpenPersistableDocument.AUDIO_MIME_TYPES) },
         )
     }
 
@@ -745,7 +788,7 @@ private fun ReaderMessage(text: String) {
 }
 
 @Composable
-private fun ReaderUnavailable(message: String, onRelink: () -> Unit, onBack: () -> Unit) {
+private fun ReaderUnavailable(message: String, backLabel: String, onRelink: () -> Unit, onBack: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             modifier = Modifier.padding(32.dp),
@@ -759,7 +802,7 @@ private fun ReaderUnavailable(message: String, onRelink: () -> Unit, onBack: () 
             )
             Text(text = message, color = ReaderInkDim, fontSize = 15.sp)
             ReaderTextButton(stringResource(R.string.reader_unavailable_relink), onRelink)
-            ReaderTextButton(stringResource(R.string.reader_back), onBack)
+            ReaderTextButton(backLabel, onBack)
         }
     }
 }
