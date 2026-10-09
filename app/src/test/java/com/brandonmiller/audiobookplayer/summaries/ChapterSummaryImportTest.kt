@@ -304,4 +304,167 @@ class ChapterSummaryImportTest {
         assertNull(match.byChapterIndex[0])
         assertEquals("Vin.", match.byChapterIndex[1])
     }
+
+    // ------------------------------------------------------------------ books that renumber
+
+    @Test
+    fun `sub-headings under a chapter belong to its summary`() {
+        // The shape of the owner's Brothers Karamazov file. #### Summary used to end the entry and
+        // discard everything beneath it, so the whole file imported nothing.
+        val entries = parseSummaryFile(
+            """
+            ### Chapter 1: Fyodor Pavlovitch Karamazov
+
+            #### Summary
+
+            The narrator introduces Fyodor.
+
+            #### Analysis
+
+            - **Moral contradiction:** Fyodor is not merely a fool.
+
+            ### Chapter 2: He Gets Rid of His Eldest Son
+
+            #### Summary
+
+            Fyodor neglects Dmitri.
+            """.trimIndent(),
+        )
+
+        assertEquals(2, entries.size)
+        assertEquals("Chapter 1", entries[0].label)
+        assertTrue(entries[0].text.startsWith("**Summary**"))
+        assertTrue(entries[0].text.contains("The narrator introduces Fyodor."))
+        assertTrue(entries[0].text.contains("**Analysis**"))
+        assertTrue(entries[0].text.contains("Moral contradiction"))
+        assertEquals("**Summary**\n\nFyodor neglects Dmitri.", entries[1].text)
+    }
+
+    @Test
+    fun `entries carry the book heading they sit under`() {
+        val entries = parseSummaryFile(
+            """
+            # The Brothers Karamazov: Chapter Summaries
+
+            ## Book I: The History of a Family
+
+            ### Chapter 1: Fyodor
+            First.
+
+            ## Book II: An Unfortunate Gathering
+
+            ### Chapter 1: They Arrive at the Monastery
+            Second.
+
+            ## Epilogue
+
+            ### Chapter 1: Plans to Save Mitya
+            Third.
+            """.trimIndent(),
+        )
+
+        assertEquals(listOf("1", "2", "epilogue"), entries.map { it.section })
+        assertEquals(listOf("Chapter 1", "Chapter 1", "Chapter 1"), entries.map { it.label })
+    }
+
+    @Test
+    fun `a plain book line is a section, not prose`() {
+        val entries = parseSummaryFile(
+            """
+            Book One
+            Chapter 1
+            First.
+            Book Two
+            Chapter 1
+            Second.
+            """.trimIndent(),
+        )
+
+        assertEquals(listOf("First.", "Second."), entries.map { it.text })
+        assertEquals(listOf("1", "2"), entries.map { it.section })
+    }
+
+    @Test
+    fun `a marker may name its own book`() {
+        assertEquals("Book 2, Chapter 1", chapterReferenceIn("Book 2, Chapter 1: They Arrive"))
+        assertEquals("Book II Chapter 12", chapterReferenceIn("Book II Chapter 12"))
+        assertNull(sectionIn("Mistborn Book 3: The Hero of Ages"))
+        assertEquals("2", sectionIn("Book II: An Unfortunate Gathering"))
+        assertEquals("1", sectionIn("Part One"))
+    }
+
+    @Test
+    fun `chapters numbered within books match the book's own chapters`() {
+        val chapters = mapOf(
+            0 to "Book 1 - Chapter 1", 1 to "Book 1 - Chapter 2",
+            2 to "Book 2 - Chapter 1", 3 to "Book 2 - Chapter 2",
+            4 to "Epilogue - Chapter 1",
+        )
+        val match = matchSummaries(
+            listOf(
+                SummaryEntry("Chapter 1", "B2C1.", section = "2"),
+                SummaryEntry("Chapter 2", "B1C2.", section = "1"),
+                SummaryEntry("Chapter 1", "E1.", section = "epilogue"),
+                SummaryEntry("Book 1, Chapter 1", "B1C1."),
+            ),
+            chapters,
+        )
+
+        assertEquals("B1C1.", match.byChapterIndex[0])
+        assertEquals("B1C2.", match.byChapterIndex[1])
+        assertEquals("B2C1.", match.byChapterIndex[2])
+        assertEquals("E1.", match.byChapterIndex[4])
+        assertNull(match.byChapterIndex[3])
+    }
+
+    @Test
+    fun `a renumbering file is not matched by number against titles that name no book`() {
+        // Book two's chapter 1 is not the audio's chapter 1, and its chapter 3 is not chapter 3.
+        val match = matchSummaries(
+            listOf(
+                SummaryEntry("Chapter 1", "B1C1.", section = "1"),
+                SummaryEntry("Chapter 1", "B2C1.", section = "2"),
+                SummaryEntry("Chapter 3", "B2C3.", section = "2"),
+            ),
+            mapOf(0 to "Chapter 1", 1 to "Chapter 2", 2 to "Chapter 3"),
+        )
+
+        assertEquals(0, match.matchedCount)
+    }
+
+    @Test
+    fun `parts over continuous numbering still match plain chapter titles`() {
+        val match = matchSummaries(
+            listOf(
+                SummaryEntry("Chapter 1", "One.", section = "1"),
+                SummaryEntry("Chapter 2", "Two.", section = "2"),
+            ),
+            mapOf(0 to "Chapter 1", 1 to "Chapter 2"),
+        )
+
+        assertEquals("One.", match.byChapterIndex[0])
+        assertEquals("Two.", match.byChapterIndex[1])
+    }
+
+    @Test
+    fun `a file without books still matches book-numbered titles in order`() {
+        val match = matchSummaries(
+            entries("Chapter 1" to "First.", "Chapter 1" to "Second."),
+            mapOf(0 to "Book 1 - Chapter 1", 1 to "Book 2 - Chapter 1"),
+        )
+
+        assertEquals("First.", match.byChapterIndex[0])
+        assertEquals("Second.", match.byChapterIndex[1])
+    }
+
+    @Test
+    fun `a section named on every chapter is ignored`() {
+        val match = matchSummaries(
+            listOf(SummaryEntry("Chapter 2", "Two.", section = "1"), SummaryEntry("Chapter 2", "Again.", section = "2")),
+            mapOf(0 to "Mistborn Book 3 - Chapter 1", 1 to "Mistborn Book 3 - Chapter 2"),
+        )
+
+        // The file renumbers and the titles carry no usable book, so nothing is guessed.
+        assertEquals(0, match.matchedCount)
+    }
 }

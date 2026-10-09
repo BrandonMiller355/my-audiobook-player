@@ -121,6 +121,21 @@ partway through and the result would look complete.
 - **THEN** no entry is created for it
 - **AND** it does not become part of the summary above or below it
 
+#### Scenario: Sub-headings inside a chapter's entry
+
+- **WHEN** a chapter's heading such as `### Chapter 1: Fyodor Pavlovitch Karamazov` is followed by
+  deeper headings such as `#### Summary` and `#### Analysis`
+- **THEN** those headings and the text beneath them are part of that chapter's summary, each shown
+  as a bold line
+- **AND** a heading at the chapter heading's level or above still ends the entry
+
+#### Scenario: Chapters grouped under books
+
+- **WHEN** a file groups its chapters under headings such as `## Book II: An Unfortunate Gathering`,
+  or under a named section such as `## Epilogue` with `### Chapter 1` beneath it
+- **THEN** each entry beneath records that book or section alongside its chapter number
+- **AND** a marker may also name its book itself, as in `Book 2, Chapter 1`
+
 #### Scenario: Markdown emphasis in a summary
 
 - **WHEN** a summary's text contains Markdown emphasis such as `**Ruin**`
@@ -146,6 +161,18 @@ a confidently wrong summary, which reads as the feature working.
 - **WHEN** a book's first audio chapter is titled `Prologue` and its second is `Chapter 1`, and the
   file has entries for `Prologue` and `Chapter 1`
 - **THEN** each entry lands on the chapter it names rather than on the chapter at its position
+
+#### Scenario: A book that numbers its chapters afresh in every part
+
+- **WHEN** the audio's chapters are titled `Book 1 - Chapter 1` … `Book 2 - Chapter 1` …, and the
+  file's `### Chapter 1` entries sit under `## Book I` and `## Book II`
+- **THEN** each entry lands on the chapter of its own book with that number
+
+#### Scenario: A renumbering file against titles that name no book
+
+- **WHEN** the file's books each restart at chapter one, and the audio's chapters name no book
+- **THEN** numbered entries are not matched by chapter number alone
+- **AND** a file whose parts merely group continuously numbered chapters still matches by number
 
 #### Scenario: A chapter number written another way
 
