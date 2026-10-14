@@ -266,7 +266,7 @@ private fun NoteRowItem(
                 )
 
                 // Selectable so a note can be copied out to wherever the book club discussion
-                // happens. Nothing else in the app is, because nothing else is the user's own words.
+                // happens.
                 SelectionContainer {
                     Text(
                         text = note.text ?: stringResource(R.string.note_untitled),

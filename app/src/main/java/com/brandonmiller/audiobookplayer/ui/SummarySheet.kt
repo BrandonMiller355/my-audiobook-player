@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
@@ -48,8 +49,8 @@ import com.brandonmiller.audiobookplayer.ui.theme.audiobookColors
  * Lives in the top-level `ui` package rather than under `player` or `reader`: both chapter lists open
  * the same sheet, and the end-of-chapter offer opens it with neither list on screen.
  *
- * The text is not selectable and not editable. The file is the source of truth; correcting a summary
- * means editing the file and importing it again.
+ * The text is selectable, so a summary can be copied out, but not editable. The file is the source of
+ * truth; correcting a summary means editing the file and importing it again.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -123,14 +124,18 @@ fun SummarySheet(
             // Annotated rather than raw, so a summary written in Markdown shows its emphasis instead
             // of the asterisks that expressed it. Done here rather than at import because the file
             // stays the source of truth: what is stored is what the owner wrote.
-            Text(
-                text = remember(text) { annotateSummary(text) },
-                style = AudiobookType.bodyLarge,
-                color = colors.inkMuted,
-                modifier = Modifier
-                    .verticalScroll(scrollState)
-                    .padding(horizontal = 22.dp, vertical = 20.dp),
-            )
+            // Selectable inside the scroll rather than around it, so a long press starts a selection
+            // and a drag still scrolls.
+            Box(Modifier.verticalScroll(scrollState)) {
+                SelectionContainer {
+                    Text(
+                        text = remember(text) { annotateSummary(text) },
+                        style = AudiobookType.bodyLarge,
+                        color = colors.inkMuted,
+                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 20.dp),
+                    )
+                }
+            }
         }
     }
 }

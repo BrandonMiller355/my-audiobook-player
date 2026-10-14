@@ -357,3 +357,18 @@ belonging to the owner, including a summary file that was previously imported.
 - **THEN** its summaries are removed with it
 - **AND** the file they were imported from is untouched
 
+### Requirement: A shown summary can be copied
+
+The text of a shown summary SHALL be selectable, and the selected text SHALL be copyable to the
+system clipboard. The summary SHALL NOT be editable: the imported file stays the source of truth.
+
+#### Scenario: Copying part of a summary
+
+- **WHEN** the owner long-presses within a shown summary and chooses Copy
+- **THEN** the selected text is on the system clipboard
+- **AND** playback is unaffected
+
+#### Scenario: Scrolling a long summary
+
+- **WHEN** the owner drags within a summary longer than the sheet
+- **THEN** the summary scrolls rather than starting a selection

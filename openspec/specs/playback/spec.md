@@ -29,6 +29,12 @@ position and the duration of what is playing.
 - **WHEN** the Player screen is shown but has not yet connected to the playback service
 - **THEN** it shows a neutral connecting state rather than incorrect position or duration
 
+#### Scenario: Copying the book's title
+
+- **WHEN** the owner long-presses the book's title on the Player screen and chooses Copy
+- **THEN** the title is on the system clipboard
+- **AND** playback is unaffected
+
 ### Requirement: A folder book plays through in chapter order
 
 A folder book SHALL play as an ordered playlist of its chapter files, advancing to the next chapter

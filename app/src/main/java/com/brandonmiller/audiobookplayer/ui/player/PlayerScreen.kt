@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -248,16 +249,26 @@ fun PlayerScreen(
                     // session connects, so nothing jumps when it does.
                     .alpha(if (state.connected) 1f else DISABLED_ALPHA),
             ) {
-                Text(
-                    text = when {
-                        !state.connected -> stringResource(R.string.player_connecting)
-                        else -> state.bookTitle.ifBlank { stringResource(R.string.player_unknown_book) }
-                    },
-                    style = if (state.connected) AudiobookType.titlePlayer else AudiobookType.bodyEmpty,
-                    color = if (state.connected) colors.ink else colors.textSecondary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                if (state.connected) {
+                    // Selectable so the title can be copied out, to look the book up or share it.
+                    SelectionContainer {
+                        Text(
+                            text = state.bookTitle.ifBlank { stringResource(R.string.player_unknown_book) },
+                            style = AudiobookType.titlePlayer,
+                            color = colors.ink,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                } else {
+                    Text(
+                        text = stringResource(R.string.player_connecting),
+                        style = AudiobookType.bodyEmpty,
+                        color = colors.textSecondary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
 
                 if (state.chapterCount > 0) {
                     Spacer(Modifier.height(8.dp))
